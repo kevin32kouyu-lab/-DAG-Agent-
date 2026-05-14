@@ -101,6 +101,47 @@ class TestFeedbackCrossReviewRejection:
         affected = handler.handle_cross_review_rejection(dag, flags)
         assert len(affected) == 0
 
+    def test_medium_omission_triggers_incremental_supplement(self):
+        """Medium severity omission: reset only target agent, not upstream."""
+        dag = build_test_dag()
+        handler = FeedbackHandler()
+        flags = [
+            {"flag_type": "omission", "severity": "medium",
+             "source_agent": "SentimentAnalyzer",
+             "target_agent": "FeatureAnalyzer",
+             "detail": "G2 reviews mention API integration, feature analysis missed it"},
+        ]
+        affected = handler.handle_cross_review_rejection(dag, flags)
+        # Target agent (feat) should be reset
+        assert "feat" in affected
+        # Upstream (col, sd) should NOT be reset for medium omission
+        assert "col" not in affected
+        assert "sd" not in affected
+        # Target agent should have omission context injected
+        feat_node = dag.get_node("feat")
+        assert feat_node.state == NodeState.PENDING
+        assert "omission_context" in feat_node.context
+        omitted_detail = feat_node.context["omission_context"][0]
+        assert omitted_detail["flag_type"] == "omission"
+
+    def test_medium_low_severity_no_cross_review_retry_count(self):
+        """Medium/low severity should not consume cross_review_retries counter."""
+        dag = build_test_dag()
+        handler = FeedbackHandler()
+        for n in dag.nodes:
+            if n.agent_type == "FeatureAnalyzer":
+                n.state = NodeState.COMPLETED
+        flags = [
+            {"flag_type": "omission", "severity": "medium",
+             "source_agent": "SentimentAnalyzer",
+             "target_agent": "FeatureAnalyzer",
+             "detail": "API integration not covered"},
+        ]
+        handler.handle_cross_review_rejection(dag, flags)
+        feat_node = dag.get_node("feat")
+        # cross_review_retries should NOT increment for medium severity
+        assert feat_node.cross_review_retries == 0
+
     def test_cross_review_max_one_round(self):
         dag = build_test_dag()
         handler = FeedbackHandler()

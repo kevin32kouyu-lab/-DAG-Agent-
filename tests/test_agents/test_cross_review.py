@@ -128,3 +128,10 @@ async def test_cross_review_no_issues_when_consistent(cr_store, cr_tools):
 
     output, traces = await agent.execute(task)
     assert output.status == "completed"
+
+
+def test_cross_review_system_prompt_includes_contradicts_edges():
+    """CrossReview agent system prompt should instruct creating contradicts edges."""
+    prompt = CrossReviewAgent.system_prompt
+    assert "contradicts" in prompt.lower()
+    assert "edge" in prompt.lower()

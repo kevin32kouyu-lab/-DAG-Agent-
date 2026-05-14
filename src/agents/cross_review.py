@@ -30,6 +30,11 @@ For each finding, create a CrossReviewFlag node with:
 - involved_agents: list of agent types
 - description: human-readable explanation
 
+For contradiction findings, also create contradicts edges between the conflicting analysis nodes
+to mark their disagreement in the knowledge graph. Use edge_type="contradicts" when creating
+these edges via graph_write. The contradicts edge documents that one agent's conclusion
+weakens or opposes another's for downstream SWOT/Writer/QA agents to consider.
+
 High severity contradictions should trigger re-analysis of the involved agents.
 
 Output your flags list in the data.flags field of your finalize result.

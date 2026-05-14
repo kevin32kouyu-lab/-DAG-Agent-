@@ -57,40 +57,63 @@ class FeedbackHandler:
 
     def handle_cross_review_rejection(self, dag: TaskDAG,
                                        flags: list[dict]) -> set[str]:
-        high_flags = [f for f in flags if f.get("severity") == "high"]
-        if not high_flags:
-            return set()
-
-        affected_agents: set[str] = set()
-        for flag in high_flags:
-            for agent_type in flag.get("involved_agents", []):
-                affected_agents.add(agent_type)
-
         affected_nodes: set[str] = set()
-        for agent_type in affected_agents:
-            for node in dag.find_nodes_by_agent(agent_type):
-                if node.cross_review_retries >= self.MAX_CROSS_REVIEW_ROUNDS:
+
+        # High severity: reset involved agents + upstream, consume retry budget
+        high_flags = [f for f in flags if f.get("severity") == "high"]
+        if high_flags:
+            affected_agents: set[str] = set()
+            for flag in high_flags:
+                for agent_type in flag.get("involved_agents", []):
+                    affected_agents.add(agent_type)
+
+            for agent_type in affected_agents:
+                for node in dag.find_nodes_by_agent(agent_type):
+                    if node.cross_review_retries >= self.MAX_CROSS_REVIEW_ROUNDS:
+                        continue
+                    node.state = NodeState.PENDING
+                    node.cross_review_retries += 1
+                    node.context["cross_review_flags"] = [
+                        f for f in high_flags
+                        if agent_type in f.get("involved_agents", [])
+                    ]
+                    # Also reset upstream dependencies
+                    upstream = dag.trace_upstream(node.node_id)
+                    for uid in upstream:
+                        up_node = dag.get_node(uid)
+                        if up_node and up_node.state == NodeState.COMPLETED:
+                            up_node.state = NodeState.PENDING
+                            affected_nodes.add(uid)
+                    affected_nodes.add(node.node_id)
+
+            self._audit("cross_review_rejected", {
+                "flags": high_flags,
+                "affected_agents": list(affected_agents),
+                "affected_nodes": list(affected_nodes),
+            })
+
+        # Medium severity omission: incremental supplement, target only, no upstream reset
+        omission_flags = [
+            f for f in flags
+            if f.get("severity") == "medium" and f.get("flag_type") == "omission"
+        ]
+        for flag in omission_flags:
+            target_agent = flag.get("target_agent", "")
+            if not target_agent:
+                continue
+            for node in dag.find_nodes_by_agent(target_agent):
+                if node.state != NodeState.COMPLETED:
                     continue
                 node.state = NodeState.PENDING
-                node.cross_review_retries += 1
-                node.context["cross_review_flags"] = [
-                    f for f in high_flags
-                    if agent_type in f.get("involved_agents", [])
-                ]
-                # Also reset upstream dependencies
-                upstream = dag.trace_upstream(node.node_id)
-                for uid in upstream:
-                    up_node = dag.get_node(uid)
-                    if up_node and up_node.state == NodeState.COMPLETED:
-                        up_node.state = NodeState.PENDING
-                        affected_nodes.add(uid)
+                # Inject omission context for incremental supplement
+                node.context.setdefault("omission_context", []).append(flag)
                 affected_nodes.add(node.node_id)
 
-        self._audit("cross_review_rejected", {
-            "flags": high_flags,
-            "affected_agents": list(affected_agents),
-            "affected_nodes": list(affected_nodes),
-        })
+        if omission_flags:
+            self._audit("cross_review_omission", {
+                "omission_flags": omission_flags,
+                "affected_nodes": list(affected_nodes),
+            })
 
         return affected_nodes
 
