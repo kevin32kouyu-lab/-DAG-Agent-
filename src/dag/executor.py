@@ -59,6 +59,10 @@ class AgentExecutor:
         if output.status == "failed":
             raise RuntimeError(f"{node.agent_type} failed: {output.summary}")
 
+        # Store output data on node context for feedback handlers
+        if hasattr(output, 'data') and output.data:
+            node.context["_output_data"] = output.data
+
         node.state = NodeState.COMPLETED
 
     def _build_agent(self, node: DAGNode) -> BaseAgent:

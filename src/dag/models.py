@@ -23,6 +23,7 @@ class DAGNode:
     priority: int = 0
     retries: int = 0
     max_retries: int = 3
+    qa_round: int = 0
     cross_review_retries: int = 0
     context: dict[str, Any] = field(default_factory=dict)
 
@@ -79,10 +80,19 @@ class TaskDAG:
         return affected
 
     def trace_downstream(self, node_id: str) -> set[str]:
+        """BFS downstream: find all nodes that transitively depend on node_id."""
         affected: set[str] = set()
-        for node in self.nodes:
-            if node_id in node.depends_on:
-                affected.add(node.node_id)
+        visited: set[str] = set()
+        queue = [node_id]
+        while queue:
+            current = queue.pop(0)
+            if current in visited:
+                continue
+            visited.add(current)
+            for node in self.nodes:
+                if current in node.depends_on and node.node_id not in visited:
+                    affected.add(node.node_id)
+                    queue.append(node.node_id)
         return affected
 
     def find_nodes_by_agent(self, agent_type: str) -> list[DAGNode]:

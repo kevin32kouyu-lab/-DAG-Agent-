@@ -1,15 +1,21 @@
 import asyncio
 from src.dag.models import TaskDAG, DAGNode, NodeState
+from src.dag.feedback import FeedbackHandler
 
 CHECKPOINT_AGENT = "DataEnricher"
 CHECKPOINT_TIMEOUT = 30 * 60  # 30 minutes auto-release
 
+QA_AGENT_TYPES = {"QA_FactCheck", "QA_LogicCheck"}
+CROSS_REVIEW_AGENT = "CrossReviewAgent"
+
 
 class DAGScheduler:
-    def __init__(self, review_mode: bool = False):
+    def __init__(self, review_mode: bool = False,
+                 feedback_handler: FeedbackHandler | None = None):
         self._event_callbacks: dict[str, list] = {}
         self._checkpoint_event: asyncio.Event | None = None
         self.review_mode = review_mode
+        self.feedback = feedback_handler or FeedbackHandler()
 
     def on(self, event: str, callback):
         self._event_callbacks.setdefault(event, []).append(callback)
@@ -63,6 +69,42 @@ class DAGScheduler:
             node.state = NodeState.COMPLETED
             await self._emit("node_completed", node)
             await self._emit("node_state_change", node)
+
+            # Feedback: check QA output for failed nodes
+            if node.agent_type in QA_AGENT_TYPES:
+                output_data = node.context.get("_output_data", {})
+                failed_nodes = output_data.get("failed_nodes", [])
+                if failed_nodes:
+                    next_round = node.qa_round + 1
+                    affected = self.feedback.handle_qa_rejection(
+                        dag, qa_node_id=node.node_id,
+                        failed_nodes=failed_nodes,
+                        reasons=output_data.get("issues", []),
+                        qa_round=next_round,
+                    )
+                    if affected:
+                        await self._emit("feedback_applied", {
+                            "type": "qa_rejection",
+                            "qa_node_id": node.node_id,
+                            "round": next_round,
+                            "affected_nodes": list(affected),
+                        })
+
+            # Feedback: check CrossReview output for high-severity flags
+            if node.agent_type == CROSS_REVIEW_AGENT:
+                output_data = node.context.get("_output_data", {})
+                flags = output_data.get("flags", [])
+                high_flags = [f for f in flags if f.get("severity") == "high"]
+                if high_flags:
+                    affected = self.feedback.handle_cross_review_rejection(
+                        dag, high_flags,
+                    )
+                    if affected:
+                        await self._emit("feedback_applied", {
+                            "type": "cross_review_rejection",
+                            "cr_node_id": node.node_id,
+                            "affected_nodes": list(affected),
+                        })
 
             if self.review_mode and node.agent_type == CHECKPOINT_AGENT:
                 self._checkpoint_event = asyncio.Event()
