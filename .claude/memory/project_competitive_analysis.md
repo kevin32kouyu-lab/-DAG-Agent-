@@ -1,13 +1,13 @@
 ---
 name: competitive-analysis-agents
-description: 14-agent competitive analysis system — design complete, plans done, ready for P1 implementation
+description: 14-agent competitive analysis system — P1-P5 done, P6 in progress
 metadata:
   type: project
 ---
 
 Building "竞品分析 Agent 协作系统" — AI-driven competitive analysis with 14 agents collaborating through a knowledge graph.
 
-**Status:** Design and 7-phase planning complete (2026-05-14). All cross-document consistency issues fixed. Ready to start P1 implementation.
+**Status (updated 2026-05-15):** P1-P5 complete and committed. P6 (API + UI) in progress with uncommitted changes. P7 files beginning to appear.
 
 **Architecture:** Knowledge Graph (SQLite, 3 layers: Raw→Analysis→Synthesis) → Agent execution layer (14 agents, each with independent ReAct loop) → DAG engine (scheduling + feedback loops) → FastAPI + WebSocket → React frontend.
 
@@ -19,7 +19,14 @@ Building "竞品分析 Agent 协作系统" — AI-driven competitive analysis wi
 - Lazy imports for AgentExecutor to avoid forward-reference ImportError
 - 3-tier data source degradation strategy in Collector
 
-**Phase plan:** P1 (foundation)→P2 (DAG)→P3 (collection)→P4 (analysis)→P5 (QA feedback)→P6 (API+UI)→P7 (infrastructure). Each phase has verifiable output.
+**Phase progress:**
+- P1 ✓ Foundation: knowledge graph, LLM gateway, agent base + registry, ReAct loop
+- P2 ✓ DAG: models, scheduler, executor with lazy imports
+- P3 ✓ Collection: source discovery, collector, data enricher
+- P4 ✓ Analysis: feature/sentiment/pricing/techstack/market position + cross-review + SWOT + writer
+- P5 ✓ QA: fact-check + logic-check agents, feedback loop with downstream cascade
+- P6 (in progress): FastAPI routes, WebSocket streaming, React frontend pages
+- P7 (pending): infrastructure, audit, snapshot, task queue, health checks
 
 **Key files:**
 - Design: `docs/superpowers/specs/2026-05-14-competitive-analysis-agents-design.md`
