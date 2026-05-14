@@ -1,0 +1,84 @@
+import asyncio
+from src.dag.models import TaskDAG, DAGNode, NodeState
+
+CHECKPOINT_AGENT = "DataEnricher"
+CHECKPOINT_TIMEOUT = 30 * 60  # 30 minutes auto-release
+
+
+class DAGScheduler:
+    def __init__(self, review_mode: bool = False):
+        self._event_callbacks: dict[str, list] = {}
+        self._checkpoint_event: asyncio.Event | None = None
+        self.review_mode = review_mode
+
+    def on(self, event: str, callback):
+        self._event_callbacks.setdefault(event, []).append(callback)
+
+    async def _emit(self, event: str, *args, **kwargs):
+        for cb in self._event_callbacks.get(event, []):
+            await cb(*args, **kwargs)
+
+    def release_checkpoint(self) -> None:
+        if self._checkpoint_event:
+            self._checkpoint_event.set()
+
+    async def run(self, dag: TaskDAG, executor) -> None:
+        while True:
+            ready = dag.get_ready_nodes()
+            for node in ready:
+                node.state = NodeState.READY
+
+            if not ready:
+                for node in dag.nodes:
+                    if node.state == NodeState.FAILED and node.retries < node.max_retries:
+                        node.retries += 1
+                        node.state = NodeState.PENDING
+                        ready.append(node)
+
+            if not ready:
+                break
+
+            tasks = []
+            for node in ready:
+                node.state = NodeState.RUNNING
+                await self._emit("node_state_change", node)
+                tasks.append(asyncio.create_task(self._run_node(node, executor, dag)))
+
+            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for t in tasks:
+                if not t.done():
+                    await t
+
+            # Check if any failed nodes can be retried before declaring terminal
+            retriable = any(
+                n.state == NodeState.FAILED and n.retries < n.max_retries
+                for n in dag.nodes
+            )
+            if dag.is_terminal() and not retriable:
+                break
+
+    async def _run_node(self, node: DAGNode, executor, dag: TaskDAG):
+        try:
+            await executor.execute(node)
+            node.state = NodeState.COMPLETED
+            await self._emit("node_completed", node)
+            await self._emit("node_state_change", node)
+
+            if self.review_mode and node.agent_type == CHECKPOINT_AGENT:
+                self._checkpoint_event = asyncio.Event()
+                await self._emit("checkpoint_reached", node, dag.task_id)
+                try:
+                    await asyncio.wait_for(
+                        self._checkpoint_event.wait(),
+                        timeout=CHECKPOINT_TIMEOUT,
+                    )
+                except asyncio.TimeoutError:
+                    pass
+                self._checkpoint_event = None
+                await self._emit("checkpoint_released", node, dag.task_id)
+
+        except Exception as e:
+            node.state = NodeState.FAILED
+            node.context["error"] = str(e)
+            await self._emit("node_failed", node)
+            await self._emit("node_state_change", node)
