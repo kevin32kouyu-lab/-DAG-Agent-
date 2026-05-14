@@ -3,7 +3,7 @@
 ## Project: 竞品分析 Agent 协作系统
 
 AI-driven competitive analysis with 14 agents collaborating through a knowledge graph.
-Design + 7-phase plan complete. Starting P1 implementation.
+Design + 7-phase plan complete. P1-P5 done, P6 in progress.
 
 ## Memory
 
@@ -27,6 +27,24 @@ Knowledge Graph (SQLite, 3 layers) → 14 Agents (ReAct loops) → DAG Engine �
 - Lazy imports in AgentExecutor (avoid forward-reference ImportError across phases)
 - 3-tier data source degradation in Collector
 
+## Current Status (updated 2026-05-15)
+
+**Phase:** P6 (API + UI) in progress, P7 files beginning to appear.
+
+**Completed:**
+- P1 foundation: Knowledge graph models/store/query, LLM gateway, agent base class + registry + ReAct loop
+- P2 DAG: Models, scheduler, executor with lazy imports
+- P3 collection: Source discovery, collector, data enricher agents
+- P4 analysis: Feature/sentiment/pricing/techstack/market position analyzers
+- P5 QA feedback: Cross-review agent, QA fact-check + logic-check, feedback loop with downstream cascade
+- P6 core: FastAPI app, task/report/trace/agent routes, WebSocket streaming, React frontend (TaskPanel, Monitor, Report, TraceExplorer pages)
+
+**In progress (uncommitted):**
+- API refinements (routes, deps, app.py modifications)
+- DAG executor/scheduler/feedback modifications
+- Web frontend enhancements (new components/, context/, types.ts, utils/)
+- P7 overlap: infrastructure/ module, schema/ models, llm_gateway cache + cost_tracker
+
 ## Development Rules
 
 1. **Read the plan before writing code** — every task has exact file paths, code, and test commands
@@ -37,7 +55,7 @@ Knowledge Graph (SQLite, 3 layers) → 14 Agents (ReAct loops) → DAG Engine �
 
 ## Phase Order
 
-P1 (foundation) → P2 (DAG) → P3 (collection) → P4 (analysis) → P5 (QA feedback) → P6 (API+UI) → P7 (infrastructure)
+P1 ✓ → P2 ✓ → P3 ✓ → P4 ✓ → P5 ✓ → P6 (in progress) → P7 (pending)
 
 Each phase has verifiable output. P1 = single agent runs ReAct loop end-to-end.
 
