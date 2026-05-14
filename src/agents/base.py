@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from src.agents.context import AgentContext
 from src.agents.tools.base import ToolRegistry
 from src.knowledge_graph.store import GraphStore
@@ -13,7 +13,7 @@ class StepTrace(BaseModel):
     node_id: str
     agent_type: str
     step_number: int
-    timestamp: datetime = datetime.now()
+    timestamp: datetime = Field(default_factory=datetime.now)
     observation_summary: str = ""
     data_nodes_read: list[str] = []
     reasoning: str = ""

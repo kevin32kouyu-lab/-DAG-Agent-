@@ -1,20 +1,65 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+
+type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
+
+const MAX_RECONNECT_DELAY = 30_000;
+const BASE_DELAY = 1_000;
 
 export function useWebSocket(taskId: string) {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<unknown[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectAttempt = useRef(0);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    const ws = new WebSocket(`ws://localhost:8000/ws/task/${taskId}`);
+  const connect = useCallback(() => {
+    if (!taskId) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
+    setConnectionStatus('connecting');
+    const { protocol, host } = window.location;
+    const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${wsProtocol}//${host}/ws/task/${taskId}`);
     wsRef.current = ws;
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setEvents((prev) => [...prev, data]);
+
+    ws.onopen = () => {
+      setConnectionStatus('connected');
+      reconnectAttempt.current = 0;
     };
-    return () => ws.close();
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setEvents((prev) => [...prev, data]);
+      } catch { /* ignore malformed messages */ }
+    };
+
+    ws.onclose = () => {
+      setConnectionStatus('disconnected');
+      const delay = Math.min(MAX_RECONNECT_DELAY, BASE_DELAY * Math.pow(2, reconnectAttempt.current));
+      reconnectAttempt.current += 1;
+      reconnectTimer.current = setTimeout(connect, delay);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
   }, [taskId]);
 
-  // wsRef is kept for future use (e.g., sending messages)
-  void wsRef;
-  return events;
+  useEffect(() => {
+    connect();
+    return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, [connect]);
+
+  const send = useCallback((data: unknown) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(data));
+    }
+  }, []);
+
+  return { events, connectionStatus, send };
 }

@@ -14,8 +14,12 @@ class DAGScheduler:
                  feedback_handler: FeedbackHandler | None = None):
         self._event_callbacks: dict[str, list] = {}
         self._checkpoint_event: asyncio.Event | None = None
+        self._dag_registry: dict[str, TaskDAG] = {}
         self.review_mode = review_mode
         self.feedback = feedback_handler or FeedbackHandler()
+
+    def get_task_dag(self, task_id: str) -> TaskDAG | None:
+        return self._dag_registry.get(task_id)
 
     def on(self, event: str, callback):
         self._event_callbacks.setdefault(event, []).append(callback)
@@ -29,6 +33,7 @@ class DAGScheduler:
             self._checkpoint_event.set()
 
     async def run(self, dag: TaskDAG, executor) -> None:
+        self._dag_registry[dag.task_id] = dag
         while True:
             ready = dag.get_ready_nodes()
             for node in ready:
@@ -83,7 +88,14 @@ class DAGScheduler:
                         qa_round=next_round,
                     )
                     if affected:
+                        await self._emit("qa_reject",
+                            dag.task_id, node.agent_type,
+                            failed_nodes,
+                            output_data.get("issues", []),
+                            list(affected), next_round,
+                        )
                         await self._emit("feedback_applied", {
+                            "task_id": dag.task_id,
                             "type": "qa_rejection",
                             "qa_node_id": node.node_id,
                             "round": next_round,
@@ -101,6 +113,7 @@ class DAGScheduler:
                     )
                     if affected:
                         await self._emit("feedback_applied", {
+                            "task_id": dag.task_id,
                             "type": "cross_review_rejection",
                             "cr_node_id": node.node_id,
                             "affected_nodes": list(affected),

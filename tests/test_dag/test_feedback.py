@@ -159,6 +159,9 @@ class TestFeedbackCrossReviewRejection:
         for nid in affected1:
             dag.get_node(nid).state = NodeState.COMPLETED
 
-        # Round 2: should NOT reset (max 1 round for cross-review)
+        # Round 2: should DEGRADE (max 1 round for cross-review exceeded)
         affected2 = handler.handle_cross_review_rejection(dag, flags)
-        assert len(affected2) == 0
+        assert "feat" in affected2
+        feat_node = dag.get_node("feat")
+        assert feat_node.state == NodeState.DEGRADED
+        assert feat_node.cross_review_retries == 1  # unchanged, capped

@@ -4,53 +4,66 @@ from src.api.deps import get_scheduler
 router = APIRouter()
 
 active_connections: dict[str, list[WebSocket]] = {}
-
-# Cumulative cost tracking per task
 _task_costs: dict[str, float] = {}
+_callbacks_registered = False
 
 
 async def _broadcast(task_id: str, event: dict):
     for conn in active_connections.get(task_id, []):
-        await conn.send_json(event)
+        try:
+            await conn.send_json(event)
+        except Exception:
+            pass
 
 
-@router.websocket("/ws/task/{task_id}")
-async def task_websocket(ws: WebSocket, task_id: str):
-    await ws.accept()
-    active_connections.setdefault(task_id, []).append(ws)
+def _ensure_callbacks_registered() -> None:
+    """Register global callbacks once. Each callback broadcasts to ALL connections for the relevant task."""
+    global _callbacks_registered
+    if _callbacks_registered:
+        return
+    _callbacks_registered = True
     scheduler = get_scheduler()
 
     async def on_node_state_change(node):
-        await _broadcast(task_id, {
-            "event": "node_state_change",
-            "task_id": task_id,
-            "node_id": node.node_id,
-            "agent_type": node.agent_type,
-            "state": node.state,
-        })
+        # node.context["task_id"] holds the dag's task_id
+        task_id = node.context.get("task_id", "")
+        if task_id:
+            await _broadcast(task_id, {
+                "event": "node_state_change",
+                "task_id": task_id,
+                "node_id": node.node_id,
+                "agent_type": node.agent_type,
+                "state": node.state,
+                "depends_on": node.depends_on,
+            })
 
     async def on_node_completed(node):
-        await _broadcast(task_id, {
-            "event": "node_completed",
-            "task_id": task_id,
-            "node_id": node.node_id,
-            "agent_type": node.agent_type,
-            "state": node.state,
-        })
+        task_id = node.context.get("task_id", "")
+        if task_id:
+            await _broadcast(task_id, {
+                "event": "node_completed",
+                "task_id": task_id,
+                "node_id": node.node_id,
+                "agent_type": node.agent_type,
+                "state": node.state,
+                "depends_on": node.depends_on,
+            })
 
     async def on_node_failed(node):
-        await _broadcast(task_id, {
-            "event": "node_failed",
-            "task_id": task_id,
-            "node_id": node.node_id,
-            "agent_type": node.agent_type,
-        })
+        task_id = node.context.get("task_id", "")
+        if task_id:
+            await _broadcast(task_id, {
+                "event": "node_failed",
+                "task_id": task_id,
+                "node_id": node.node_id,
+                "agent_type": node.agent_type,
+            })
 
-    async def on_agent_log(task_id_log: str, node_id: str, agent_type: str, step: int,
+    async def on_agent_log(task_id: str, node_id: str, agent_type: str, step: int,
                            phase: str, summary: str):
         await _broadcast(task_id, {
             "event": "agent_log",
-            "task_id": task_id_log,
+            "task_id": task_id,
             "node_id": node_id,
             "agent_type": agent_type,
             "step": step,
@@ -58,25 +71,52 @@ async def task_websocket(ws: WebSocket, task_id: str):
             "summary": summary,
         })
 
-    async def on_cost_update(task_id_cost: str, delta_cost: float, total_cost: float):
+    async def on_cost_update(task_id: str, delta_cost: float, total_cost: float):
         _task_costs[task_id] = total_cost
         await _broadcast(task_id, {
             "event": "cost_update",
-            "task_id": task_id_cost,
+            "task_id": task_id,
             "delta_cost": delta_cost,
             "total_cost": total_cost,
         })
 
-    async def on_qa_reject(task_id_qa: str, qa_agent_type: str, failed_nodes: list[str],
+    async def on_qa_reject(task_id: str, qa_agent_type: str, failed_nodes: list[str],
                            reasons: list[str], affected_nodes: list[str], qa_round: int):
         await _broadcast(task_id, {
             "event": "qa_reject",
-            "task_id": task_id_qa,
+            "task_id": task_id,
             "qa_agent_type": qa_agent_type,
             "failed_nodes": failed_nodes,
             "reasons": reasons,
             "affected_nodes": affected_nodes,
             "qa_round": qa_round,
+        })
+
+    async def on_feedback_applied(data: dict):
+        task_id = data.get("task_id", "")
+        if task_id:
+            await _broadcast(task_id, {
+                "event": "feedback_applied",
+                "task_id": task_id,
+                "type": data.get("type", ""),
+                "qa_node_id": data.get("qa_node_id", ""),
+                "cr_node_id": data.get("cr_node_id", ""),
+                "round": data.get("round", 0),
+                "affected_nodes": data.get("affected_nodes", []),
+            })
+
+    async def on_checkpoint_reached(node, task_id: str):
+        await _broadcast(task_id, {
+            "event": "checkpoint_reached",
+            "task_id": task_id,
+            "node_id": node.node_id,
+        })
+
+    async def on_checkpoint_released(node, task_id: str):
+        await _broadcast(task_id, {
+            "event": "checkpoint_released",
+            "task_id": task_id,
+            "node_id": node.node_id,
         })
 
     scheduler.on("node_state_change", on_node_state_change)
@@ -85,9 +125,21 @@ async def task_websocket(ws: WebSocket, task_id: str):
     scheduler.on("agent_log", on_agent_log)
     scheduler.on("cost_update", on_cost_update)
     scheduler.on("qa_reject", on_qa_reject)
+    scheduler.on("feedback_applied", on_feedback_applied)
+    scheduler.on("checkpoint_reached", on_checkpoint_reached)
+    scheduler.on("checkpoint_released", on_checkpoint_released)
+
+
+@router.websocket("/ws/task/{task_id}")
+async def task_websocket(ws: WebSocket, task_id: str):
+    await ws.accept()
+    _ensure_callbacks_registered()
+    active_connections.setdefault(task_id, []).append(ws)
 
     try:
         while True:
             await ws.receive_text()
     except WebSocketDisconnect:
-        active_connections.get(task_id, []).remove(ws)
+        conns = active_connections.get(task_id, [])
+        if ws in conns:
+            conns.remove(ws)

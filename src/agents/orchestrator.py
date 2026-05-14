@@ -79,6 +79,7 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
             messages=[{"role": "user", "content": prompt}],
             model_tier=self.model_tier,
             max_tokens=4096,
+            temperature=0.1,
         )
         try:
             return json.loads(resp.content)

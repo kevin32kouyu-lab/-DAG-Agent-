@@ -70,6 +70,12 @@ class FeedbackHandler:
             for agent_type in affected_agents:
                 for node in dag.find_nodes_by_agent(agent_type):
                     if node.cross_review_retries >= self.MAX_CROSS_REVIEW_ROUNDS:
+                        node.state = NodeState.DEGRADED
+                        node.context["cross_review_flags"] = [
+                            f for f in high_flags
+                            if agent_type in f.get("involved_agents", [])
+                        ]
+                        affected_nodes.add(node.node_id)
                         continue
                     node.state = NodeState.PENDING
                     node.cross_review_retries += 1
@@ -120,6 +126,6 @@ class FeedbackHandler:
     def _audit(self, event: str, data: dict) -> None:
         if self.audit_logger:
             try:
-                self.audit_logger.log(event, data)
+                self.audit_logger.log_event("", "", "", event, data)
             except Exception:
                 pass

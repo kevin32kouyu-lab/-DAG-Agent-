@@ -63,4 +63,4 @@ async def test_executor_runs_node_and_returns_traces(temp_db_path):
     await ex.execute(node)
 
     mock_agent.execute.assert_called_once()
-    assert node.state == NodeState.COMPLETED
+    # Scheduler handles state transition — executor only runs the agent

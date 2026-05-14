@@ -1,11 +1,16 @@
+import asyncio
+
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from src.api.deps import get_store, get_gateway, get_scheduler
+from src.api.deps import get_store, get_gateway, get_scheduler, get_audit_logger
 from src.agents.orchestrator import OrchestratorAgent
 from src.agents.tools.base import ToolRegistry
 from src.agents.tools.graph_tools import GraphQueryTool, GraphWriteTool
+from src.agents.tools.web_tools import WebScrapeTool, WebSearchTool
+from src.agents.tools.api_tools import ThirdPartyAPITool
+from src.dag.executor import AgentExecutor
 
 router = APIRouter()
 
@@ -40,6 +45,9 @@ async def create_task(req: CreateTaskRequest):
     tools = ToolRegistry()
     tools.register(GraphQueryTool, store=store)
     tools.register(GraphWriteTool, store=store)
+    tools.register(WebScrapeTool)
+    tools.register(WebSearchTool)
+    tools.register(ThirdPartyAPITool)
     orch = OrchestratorAgent(gateway=gateway, store=store, tool_registry=tools)
     try:
         dag, _ = await orch.execute({"task_id": task_id, "targets": req.targets, "schema": req.model_dump()})
@@ -47,6 +55,17 @@ async def create_task(req: CreateTaskRequest):
         raise HTTPException(status_code=500, detail=f"Failed to generate DAG: {e}")
     if dag is None:
         raise HTTPException(status_code=500, detail="Failed to generate DAG")
+
+    # Inject task_id into all node contexts so agents receive it
+    for node in dag.nodes:
+        node.context["task_id"] = task_id
+
+    # Start DAG execution in background
+    scheduler = get_scheduler()
+    executor = AgentExecutor(gateway=gateway, store=store, tool_registry=tools,
+                             audit_logger=get_audit_logger())
+    asyncio.create_task(scheduler.run(dag, executor))
+
     return TaskResponse(
         task_id=task_id, status="created",
         dag_nodes=[{"node_id": n.node_id, "agent_type": n.agent_type, "depends_on": n.depends_on, "state": n.state} for n in dag.nodes],

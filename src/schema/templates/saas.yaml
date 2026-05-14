@@ -1,0 +1,45 @@
+industry: saas
+
+default_dimensions:
+  - name: 功能矩阵对比
+    agent_type: FeatureAnalyzer
+    weight: 20
+  - name: 定价策略分析
+    agent_type: PricingAnalyst
+    weight: 20
+  - name: 用户口碑分析
+    agent_type: SentimentAnalyzer
+    weight: 15
+  - name: 技术栈推断
+    agent_type: TechStackAnalyzer
+    weight: 10
+  - name: 市场定位分析
+    agent_type: MarketPositionAnalyzer
+    weight: 10
+
+default_sources:
+  priority:
+    - 官网
+    - G2
+    - ProductHunt
+  excluded: []
+  min_credibility: 0.5
+
+degradation_tiers:
+  G2:
+    primary: "网页采集（评分+评论摘要）"
+    tier1: "仅提取公开评分（首页星级）"
+    tier2: "搜索引擎缓存摘要"
+    unavailable: "标记 G2 数据缺失"
+  ProductHunt:
+    primary: "网页采集公开页面"
+    tier1: "ProductHunt RSS"
+    tier2: "跳过"
+  Reddit:
+    primary: "搜索摘要"
+    tier1: "搜索引擎 site:reddit.com 片段"
+    tier2: "跳过"
+  Official:
+    primary: "httpx 直接请求"
+    tier1: "Google 缓存 / Wayback Machine"
+    tier2: "第三方页面产品描述替代"

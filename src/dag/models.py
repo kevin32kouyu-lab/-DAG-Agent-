@@ -44,12 +44,22 @@ class TaskDAG:
     nodes: list[DAGNode] = field(default_factory=list)
 
     def get_ready_nodes(self) -> list[DAGNode]:
-        completed_ids = {n.node_id for n in self.nodes if n.state == NodeState.COMPLETED}
+        # A dependency is "resolved" if COMPLETED, DEGRADED, or permanently FAILED
+        resolved_ids: set[str] = set()
+        for n in self.nodes:
+            if n.state == NodeState.COMPLETED:
+                resolved_ids.add(n.node_id)
+            elif n.state == NodeState.DEGRADED:
+                resolved_ids.add(n.node_id)
+            elif n.state == NodeState.FAILED and n.retries >= n.max_retries:
+                # Permanent failure — treat as resolved so dependents can proceed degraded
+                resolved_ids.add(n.node_id)
+
         ready = []
         for node in self.nodes:
             if node.state != NodeState.PENDING:
                 continue
-            if all(dep in completed_ids for dep in node.depends_on):
+            if all(dep in resolved_ids for dep in node.depends_on):
                 ready.append(node)
         return ready
 

@@ -54,16 +54,25 @@ class AgentExecutor:
     async def execute(self, node: DAGNode) -> None:
         agent = self._build_agent(node)
         task = self._build_task(node)
-        output, traces = await agent.execute(task)
+        raw_output = await agent.execute(task)
 
-        if output.status == "failed":
-            raise RuntimeError(f"{node.agent_type} failed: {output.summary}")
+        # Orchestrator returns TaskDAG directly, bypassing ReAct loop
+        from src.dag.models import TaskDAG
+        if isinstance(raw_output, tuple) and len(raw_output) == 2 and isinstance(raw_output[0], TaskDAG):
+            # OrchestratorAgent.execute returns (TaskDAG, [])
+            # Scheduler handles state transition after execute succeeds
+            return
+
+        output, traces = raw_output
+
+        if hasattr(output, 'status') and output.status == "failed":
+            raise RuntimeError(f"{node.agent_type} failed: {getattr(output, 'summary', 'unknown')}")
 
         # Store output data on node context for feedback handlers
         if hasattr(output, 'data') and output.data:
             node.context["_output_data"] = output.data
 
-        node.state = NodeState.COMPLETED
+        # Scheduler handles state transition after execute succeeds
 
     def _build_agent(self, node: DAGNode) -> BaseAgent:
         agent_cls = self._resolve_agent_class(node.agent_type)
