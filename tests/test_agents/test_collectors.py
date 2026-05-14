@@ -6,7 +6,8 @@ from src.llm_gateway.gateway import LLMGateway, LLMResponse
 from src.knowledge_graph.store import GraphStore
 from src.agents.tools.base import ToolRegistry
 from src.agents.tools.graph_tools import GraphQueryTool, GraphWriteTool
-from src.agents.tools.web_tools import WebSearchTool
+from src.agents.tools.web_tools import WebSearchTool, WebScrapeTool
+from src.agents.collector import CollectorAgent
 
 
 @pytest.fixture
@@ -50,3 +51,39 @@ async def test_source_discovery_creates_source_info_nodes(sd_agent):
     output, traces = await sd_agent.execute(task)
     assert output.status == "completed"
     assert len(traces) >= 1
+
+
+@pytest.fixture
+def collector_agent(temp_db_path):
+    store = GraphStore(db_path=temp_db_path)
+    gateway = MagicMock(spec=LLMGateway)
+    tools = ToolRegistry()
+    tools.register(GraphQueryTool, store=store)
+    tools.register(GraphWriteTool, store=store)
+    tools.register(WebScrapeTool)
+    return CollectorAgent(gateway=gateway, store=store, tool_registry=tools)
+
+
+@pytest.mark.asyncio
+async def test_collector_scrapes_and_stores_webpage(collector_agent):
+    collector_agent.gateway.chat = AsyncMock(side_effect=[
+        LLMResponse(
+            content=json.dumps({"reasoning": "Scraping Notion pricing", "action": "web_scrape", "params": {"url": "https://notion.so/pricing"}, "confidence": 0.9}),
+            model="test", tokens_in=50, tokens_out=30, cost=0.001,
+        ),
+        LLMResponse(
+            content=json.dumps({"reasoning": "Storing results", "action": "finalize", "result": {
+                "summary": "Collected Notion pricing page",
+                "nodes_created": ["wp1"], "edges_created": ["e1"],
+                "data": {"page_title": "Notion Pricing"}
+            }, "confidence": 0.95}),
+            model="test", tokens_in=80, tokens_out=40, cost=0.002,
+        ),
+    ])
+
+    task = {"task_id": "t1", "node_id": "c1", "agent_type": "Collector",
+            "input_query": {"urls": ["https://notion.so/pricing"], "product": "Notion"},
+            "context": {}}
+
+    output, traces = await collector_agent.execute(task)
+    assert output.status == "completed"
