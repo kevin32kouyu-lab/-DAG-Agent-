@@ -1,11 +1,21 @@
 import json
 from src.agents.base import BaseAgent
 from src.agents.contracts import AgentOutput
+from src.agents.registry import agent_registry
 from src.dag.models import TaskDAG, DAGNode
 
 
+@agent_registry.register(
+    agent_type="Orchestrator",
+    depends_on=[],
+    tools=[],
+    output_contract=AgentOutput,
+    model_tier="reasoning",
+)
 class OrchestratorAgent(BaseAgent):
     agent_type = "Orchestrator"
+    model_tier = "reasoning"
+    allowed_tools = []
     system_prompt = """You are the Orchestrator for a competitive analysis multi-agent system.
 
 Your job: given target products and analysis schema, generate a DAG (directed acyclic graph) of agent tasks.
@@ -67,7 +77,7 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
         resp = await self.gateway.chat(
             system=self.system_prompt,
             messages=[{"role": "user", "content": prompt}],
-            model_tier="reasoning",
+            model_tier=self.model_tier,
             max_tokens=4096,
         )
         try:

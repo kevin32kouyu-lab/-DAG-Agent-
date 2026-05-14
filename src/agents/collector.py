@@ -1,7 +1,15 @@
 from src.agents.base import BaseAgent
 from src.agents.contracts import AgentOutput
+from src.agents.registry import agent_registry
 
 
+@agent_registry.register(
+    agent_type="Collector",
+    depends_on=["SourceDiscovery"],
+    tools=["graph_query", "graph_write", "web_scrape"],
+    output_contract=AgentOutput,
+    model_tier="batch",
+)
 class CollectorAgent(BaseAgent):
     agent_type = "Collector"
     system_prompt = """You are a Collector agent. Scrape assigned URLs and summarize the content found.
@@ -12,6 +20,8 @@ If a URL returns an error or empty content, note that in your finalize summary. 
 """
     max_steps = 4
     output_contract = AgentOutput
+    model_tier = "batch"
+    allowed_tools = ["graph_query", "graph_write", "web_scrape"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)

@@ -1,7 +1,15 @@
 from src.agents.base import BaseAgent
 from src.agents.contracts import ReportOutput
+from src.agents.registry import agent_registry
 
 
+@agent_registry.register(
+    agent_type="Writer",
+    depends_on=["SWOTAnalyzer"],
+    tools=["graph_query", "graph_write"],
+    output_contract=ReportOutput,
+    model_tier="analysis",
+)
 class WriterAgent(BaseAgent):
     agent_type = "Writer"
     system_prompt = """You are a Report Writer agent. Generate a structured competitive analysis report.
@@ -20,6 +28,8 @@ Each claim should reference source data. Create ReportSection nodes for each sec
 """
     max_steps = 15
     output_contract = ReportOutput
+    model_tier = "analysis"
+    allowed_tools = ["graph_query", "graph_write"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)

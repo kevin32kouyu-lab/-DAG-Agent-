@@ -27,8 +27,23 @@ class PricingOutput(AgentOutput):
     models: list[dict] = Field(default_factory=list)
 
 
+class TechStackOutput(AgentOutput):
+    agent_type: str = "TechStackAnalyzer"
+    stacks: list[dict] = Field(default_factory=list)
+
+
+class MarketPositionOutput(AgentOutput):
+    agent_type: str = "MarketPositionAnalyzer"
+    positions: list[dict] = Field(default_factory=list)
+
+
+class CrossReviewOutput(AgentOutput):
+    agent_type: str = "CrossReviewAgent"
+    flags: list[dict] = Field(default_factory=list)
+
+
 class SWOTOutput(AgentOutput):
-    agent_type: str = "SWOTSynthesizer"
+    agent_type: str = "SWOTAnalyzer"
     swot: dict = Field(default_factory=dict)
 
 

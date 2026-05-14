@@ -34,6 +34,8 @@ class BaseAgent(ABC):
     system_prompt: str = ""
     max_steps: int = 15
     output_contract: type = None
+    model_tier: str = "analysis"
+    allowed_tools: list[str] = []
 
     def __init__(self, gateway: LLMGateway, store: GraphStore, tool_registry: ToolRegistry,
                  audit_logger=None):
@@ -186,7 +188,7 @@ Respond with json now."""
         resp = await self.gateway.chat(
             system=self.system_prompt,
             messages=[{"role": "user", "content": prompt}],
-            model_tier="analysis",
+            model_tier=self.model_tier,
             temperature=0.1,
             response_format={"type": "json_object"},
         )
@@ -198,6 +200,8 @@ Respond with json now."""
         return result
 
     async def _act(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
+        if self.allowed_tools and action not in self.allowed_tools:
+            return {"error": f"Tool '{action}' not in allowed_tools for {self.agent_type}"}
         tool = self.tool_registry.get(action)
         if tool:
             return await tool.execute(**params, _agent_type=self.agent_type)

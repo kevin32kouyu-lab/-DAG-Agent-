@@ -1,7 +1,15 @@
 from src.agents.base import BaseAgent
 from src.agents.contracts import AgentOutput
+from src.agents.registry import agent_registry
 
 
+@agent_registry.register(
+    agent_type="SourceDiscovery",
+    depends_on=[],
+    tools=["graph_query", "graph_write", "web_search"],
+    output_contract=AgentOutput,
+    model_tier="batch",
+)
 class SourceDiscoveryAgent(BaseAgent):
     agent_type = "SourceDiscovery"
     system_prompt = """You are a Source Discovery agent for competitive analysis.
@@ -17,6 +25,8 @@ IMPORTANT: You do NOT need to create graph nodes yourself. Just discover URLs an
 """
     max_steps = 4
     output_contract = AgentOutput
+    model_tier = "batch"
+    allowed_tools = ["graph_query", "graph_write", "web_search"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)

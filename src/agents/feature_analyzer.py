@@ -1,7 +1,15 @@
 from src.agents.base import BaseAgent
 from src.agents.contracts import FeatureMatrixOutput
+from src.agents.registry import agent_registry
 
 
+@agent_registry.register(
+    agent_type="FeatureAnalyzer",
+    depends_on=["DataEnricher"],
+    tools=["graph_query", "graph_write"],
+    output_contract=FeatureMatrixOutput,
+    model_tier="analysis",
+)
 class FeatureAnalyzer(BaseAgent):
     agent_type = "FeatureAnalyzer"
     system_prompt = """You are a Feature Analyzer for competitive analysis.
@@ -17,6 +25,8 @@ Always create derived_from edges to the WebPage/SourceInfo nodes you used.
 """
     max_steps = 10
     output_contract = FeatureMatrixOutput
+    model_tier = "analysis"
+    allowed_tools = ["graph_query", "graph_write"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)

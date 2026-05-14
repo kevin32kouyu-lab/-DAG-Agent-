@@ -1,7 +1,15 @@
 from src.agents.base import BaseAgent
 from src.agents.contracts import SentimentOutput
+from src.agents.registry import agent_registry
 
 
+@agent_registry.register(
+    agent_type="SentimentAnalyzer",
+    depends_on=["DataEnricher"],
+    tools=["graph_query", "graph_write"],
+    output_contract=SentimentOutput,
+    model_tier="batch",
+)
 class SentimentAnalyzer(BaseAgent):
     agent_type = "SentimentAnalyzer"
     system_prompt = """You are a Sentiment Analyzer for competitive analysis.
@@ -16,6 +24,8 @@ Output: SentimentNode per topic per product. derived_from links to ReviewEntry n
 """
     max_steps = 10
     output_contract = SentimentOutput
+    model_tier = "batch"
+    allowed_tools = ["graph_query", "graph_write"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)

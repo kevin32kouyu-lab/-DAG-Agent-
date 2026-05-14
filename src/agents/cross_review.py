@@ -1,7 +1,15 @@
 from src.agents.base import BaseAgent
-from src.agents.contracts import AgentOutput
+from src.agents.contracts import CrossReviewOutput
+from src.agents.registry import agent_registry
 
 
+@agent_registry.register(
+    agent_type="CrossReviewAgent",
+    depends_on=["FeatureAnalyzer", "SentimentAnalyzer", "PricingAnalyst", "TechStackAnalyzer", "MarketPositionAnalyzer"],
+    tools=["graph_query", "graph_write"],
+    output_contract=CrossReviewOutput,
+    model_tier="analysis",
+)
 class CrossReviewAgent(BaseAgent):
     agent_type = "CrossReviewAgent"
     system_prompt = """You are a Cross-Review Agent. Your job is to check consistency across analysis agents.
@@ -23,9 +31,13 @@ For each finding, create a CrossReviewFlag node with:
 - description: human-readable explanation
 
 High severity contradictions should trigger re-analysis of the involved agents.
+
+Output your flags list in the data.flags field of your finalize result.
 """
     max_steps = 12
-    output_contract = AgentOutput
+    output_contract = CrossReviewOutput
+    model_tier = "analysis"
+    allowed_tools = ["graph_query", "graph_write"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)
