@@ -213,6 +213,7 @@ export interface HistoryTask {
   id: string;
   time: string;
   targets: string;
+  targetsArr?: string[];
   status: 'completed' | 'running' | 'failed';
   duration: string;
 }

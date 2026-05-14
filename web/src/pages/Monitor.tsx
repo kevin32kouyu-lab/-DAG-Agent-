@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useTaskContext } from '../context/TaskContext';
+import { useToast } from '../components/Toast';
 import AgentCard from '../components/AgentCard';
 import DAGGraph from '../components/DAGGraph';
 import type { AgentState, AgentGroup, DAGNode, WSEvent, NodeState } from '../types';
@@ -32,15 +33,19 @@ function groupAgents(agents: Map<string, AgentState>): { group: AgentGroup; agen
 export default function Monitor() {
   const { id } = useParams<{ id: string }>();
   const { events, connectionStatus } = useWebSocket(id || '');
-  const { setWsConnected } = useTaskContext();
+  const { setWsConnected, updateHistoryTask } = useTaskContext();
+  const { toast } = useToast();
   const [agents, setAgents] = useState<Map<string, AgentState>>(new Map());
   const [totalCost, setTotalCost] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
   const [dagNodes, setDagNodes] = useState<DAGNode[]>([]);
   const [showLogs, setShowLogs] = useState(false);
 
-  /* sync WS status to context */
-  useEffect(() => { setWsConnected(connectionStatus === 'connected'); }, [connectionStatus, setWsConnected]);
+  /* sync WS status to context + cleanup on unmount */
+  useEffect(() => {
+    setWsConnected(connectionStatus === 'connected');
+    return () => { setWsConnected(false); };
+  }, [connectionStatus, setWsConnected]);
 
   const processedCount = useRef(0);
 
@@ -155,8 +160,22 @@ export default function Monitor() {
   const running = agentList.filter(a => a.state === 'running').length;
   const failed = agentList.filter(a => a.state === 'failed').length;
 
+  /* update history when task finishes */
+  useEffect(() => {
+    if (agentList.length === 0 || !id) return;
+    const allDone = agentList.every(a => a.state === 'completed');
+    const anyFailed = agentList.some(a => a.state === 'failed');
+    if (allDone) {
+      updateHistoryTask(id, { status: 'completed', duration: '已完成' });
+      toast('任务已全部完成', 'success');
+    } else if (anyFailed) {
+      updateHistoryTask(id, { status: 'failed', duration: '失败' });
+      toast('部分节点执行失败', 'error');
+    }
+  }, [completed, failed, agentList.length, id, updateHistoryTask, toast]);
+
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-6 space-y-6 animate-pageEnter">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>

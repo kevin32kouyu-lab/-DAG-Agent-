@@ -76,7 +76,19 @@ class GraphWriteTool(ToolBase):
         if agent_type:
             data["created_by"] = agent_type
 
-        node = cls(**data)
+        try:
+            node = cls(**data)
+        except Exception as e:
+            # Show LLM exactly what fields are needed so it can correct
+            import inspect
+            sig = inspect.signature(cls)
+            required = [n for n, p in sig.parameters.items()
+                        if p.default is inspect.Parameter.empty and n != "self"]
+            return {
+                "error": f"Failed to create {node_type}: {e}",
+                "required_fields": required,
+                "hint": f"Provide all required fields: {required}. Common mistake: ReportSection needs 'section' not 'title'.",
+            }
         self.store.create_node(node)
 
         source_id = kwargs.get("source_id")
