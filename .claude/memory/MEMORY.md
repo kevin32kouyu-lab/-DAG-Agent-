@@ -8,3 +8,4 @@ Memory files for this project are stored in this directory (`e:/Agent_Project/.c
 - [Memory location in project](feedback_memory_location.md) — Memory files stay in project folder, not default Claude config path
 - [Auto-save important decisions](feedback_auto_save_decisions.md) — Automatically judge and save significant design/architecture decisions to memory
 - [Context reconstruction model](feedback_context_model.md) — Rebuild context from CLAUDE.md + git log + code + design docs, memory is supplement only
+- [Real integration tests required](feedback_real_tests.md) — After MVP, all agent/LLM tests must use real API calls, not mocks
