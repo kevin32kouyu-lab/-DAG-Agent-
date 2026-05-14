@@ -34,11 +34,12 @@ class AgentExecutor:
     """
 
     def __init__(self, gateway: LLMGateway, store: GraphStore, tool_registry: ToolRegistry,
-                 audit_logger=None):
+                 audit_logger=None, degradation_handler=None):
         self.gateway = gateway
         self.store = store
         self.tool_registry = tool_registry
         self.audit_logger = audit_logger
+        self.degradation_handler = degradation_handler
         self._agent_cache: dict[str, type[BaseAgent]] = {}
 
     def _resolve_agent_class(self, agent_type: str) -> type[BaseAgent]:
@@ -77,7 +78,8 @@ class AgentExecutor:
     def _build_agent(self, node: DAGNode) -> BaseAgent:
         agent_cls = self._resolve_agent_class(node.agent_type)
         return agent_cls(gateway=self.gateway, store=self.store,
-                         tool_registry=self.tool_registry, audit_logger=self.audit_logger)
+                         tool_registry=self.tool_registry, audit_logger=self.audit_logger,
+                         degradation_handler=self.degradation_handler)
 
     @staticmethod
     def _build_task(node: DAGNode, task_id: str = "") -> dict:

@@ -2,6 +2,9 @@ import os
 from typing import Any
 from dataclasses import dataclass, field
 
+from src.llm_gateway.cache import SemanticCache
+from src.llm_gateway.cost_tracker import CostTracker
+
 
 @dataclass
 class LLMResponse:
@@ -10,6 +13,7 @@ class LLMResponse:
     tokens_in: int = 0
     tokens_out: int = 0
     cost: float = 0.0
+    cached: bool = False
     raw: Any = None
 
 
@@ -19,6 +23,8 @@ class LLMGateway:
         default_model: str = "claude-sonnet-4-6",
         model_map: dict[str, str] | None = None,
         provider_map: dict[str, str] | None = None,
+        cache: SemanticCache | None = None,
+        cost_tracker: CostTracker | None = None,
     ):
         self.default_model = default_model
         self.model_map = model_map or {
@@ -27,6 +33,8 @@ class LLMGateway:
             "batch": "claude-haiku-4-5",
         }
         self.provider_map = provider_map or {}
+        self.cache = cache or SemanticCache()
+        self.cost_tracker = cost_tracker or CostTracker()
         self._anthropic_client = None
         self._openai_clients: dict[str, Any] = {}
 
@@ -58,17 +66,31 @@ class LLMGateway:
         messages: list[dict[str, str]],
         model_tier: str = "analysis",
         model: str | None = None,
+        agent_type: str | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.3,
         response_format: dict[str, str] | None = None,
     ) -> LLMResponse:
         resolved = model or self.resolve_model(model_tier)
+
+        # Check semantic cache (prompt = last user message)
+        prompt = messages[-1]["content"] if messages else ""
+        cached = self.cache.get(prompt, system, messages)
+        if cached is not None:
+            return LLMResponse(content=cached, model=resolved, cached=True)
+
         provider = self._get_provider(resolved)
 
         if provider == "openai_compatible":
-            return await self._chat_openai(resolved, system, messages, max_tokens, temperature, response_format)
+            resp = await self._chat_openai(resolved, system, messages, max_tokens, temperature, response_format)
         else:
-            return await self._chat_anthropic(resolved, system, messages, max_tokens, temperature)
+            resp = await self._chat_anthropic(resolved, system, messages, max_tokens, temperature)
+
+        # Cache the response and track cost
+        self.cache.set(prompt, system, messages, resp.content)
+        ag = agent_type or model_tier
+        self.cost_tracker.record(ag, resp.tokens_in + resp.tokens_out, resp.cost)
+        return resp
 
     async def _chat_anthropic(self, model: str, system: str, messages: list[dict],
                               max_tokens: int, temperature: float) -> LLMResponse:

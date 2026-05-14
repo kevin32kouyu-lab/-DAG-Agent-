@@ -7,7 +7,10 @@ client = TestClient(app)
 def test_health():
     resp = client.get("/api/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    data = resp.json()
+    assert data["status"] in ("ok", "degraded")
+    assert "unhealthy_agents" in data
+    assert "timed_out_tasks" in data
 
 
 def test_create_task_accepts_targets():

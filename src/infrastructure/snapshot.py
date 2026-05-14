@@ -9,6 +9,7 @@ class SnapshotStore:
         import os
         os.makedirs(os.path.dirname(db_path) if os.path.dirname(db_path) else ".", exist_ok=True)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS snapshots (
                 task_id TEXT NOT NULL, node_id TEXT NOT NULL,
@@ -22,7 +23,7 @@ class SnapshotStore:
     def save(self, snapshot: NodeSnapshot) -> None:
         self._conn.execute(
             "INSERT OR REPLACE INTO snapshots VALUES (?, ?, ?, ?, ?, ?)",
-            (snapshot.task_id, snapshot.node_id, str(snapshot.state),
+            (snapshot.task_id, snapshot.node_id, snapshot.state.value,
              json.dumps(snapshot.kg_changeset),
              snapshot.checkpoint_time.isoformat(), snapshot.llm_cost),
         )

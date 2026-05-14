@@ -62,8 +62,12 @@ async def create_task(req: CreateTaskRequest):
 
     # Start DAG execution in background
     scheduler = get_scheduler()
+    from src.infrastructure.degradation import DegradationHandler
+    from src.infrastructure.config import config
+    degradation_handler = DegradationHandler(config=config, audit=get_audit_logger())
     executor = AgentExecutor(gateway=gateway, store=store, tool_registry=tools,
-                             audit_logger=get_audit_logger())
+                             audit_logger=get_audit_logger(),
+                             degradation_handler=degradation_handler)
     asyncio.create_task(scheduler.run(dag, executor))
 
     return TaskResponse(

@@ -38,7 +38,7 @@ class BaseAgent(ABC):
     allowed_tools: list[str] = []
 
     def __init__(self, gateway: LLMGateway, store: GraphStore, tool_registry: ToolRegistry,
-                 audit_logger=None):
+                 audit_logger=None, **kwargs):
         self.gateway = gateway
         self.store = store
         self.tool_registry = tool_registry

@@ -1,5 +1,6 @@
 import asyncio
-from src.dag.models import TaskDAG, DAGNode, NodeState
+from datetime import datetime
+from src.dag.models import TaskDAG, DAGNode, NodeState, NodeSnapshot
 from src.dag.feedback import FeedbackHandler
 
 CHECKPOINT_AGENT = "DataEnricher"
@@ -11,12 +12,14 @@ CROSS_REVIEW_AGENT = "CrossReviewAgent"
 
 class DAGScheduler:
     def __init__(self, review_mode: bool = False,
-                 feedback_handler: FeedbackHandler | None = None):
+                 feedback_handler: FeedbackHandler | None = None,
+                 snapshot_store=None):
         self._event_callbacks: dict[str, list] = {}
         self._checkpoint_event: asyncio.Event | None = None
         self._dag_registry: dict[str, TaskDAG] = {}
         self.review_mode = review_mode
         self.feedback = feedback_handler or FeedbackHandler()
+        self.snapshot_store = snapshot_store
 
     def get_task_dag(self, task_id: str) -> TaskDAG | None:
         return self._dag_registry.get(task_id)
@@ -34,6 +37,15 @@ class DAGScheduler:
 
     async def run(self, dag: TaskDAG, executor) -> None:
         self._dag_registry[dag.task_id] = dag
+
+        # Restore from snapshot: skip COMPLETED nodes
+        if self.snapshot_store:
+            snapshots = self.snapshot_store.load(dag.task_id)
+            if snapshots:
+                for node in dag.nodes:
+                    if node.node_id in snapshots and snapshots[node.node_id].state == NodeState.COMPLETED:
+                        node.state = NodeState.COMPLETED
+
         while True:
             ready = dag.get_ready_nodes()
             for node in ready:
@@ -74,6 +86,15 @@ class DAGScheduler:
             node.state = NodeState.COMPLETED
             await self._emit("node_completed", node)
             await self._emit("node_state_change", node)
+
+            # Snapshot after each completed node for checkpoint/resume
+            if self.snapshot_store:
+                self.snapshot_store.save(NodeSnapshot(
+                    task_id=dag.task_id,
+                    node_id=node.node_id,
+                    state=NodeState.COMPLETED,
+                    checkpoint_time=datetime.now(),
+                ))
 
             # Feedback: check QA output for failed nodes
             if node.agent_type in QA_AGENT_TYPES:
