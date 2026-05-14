@@ -8,7 +8,10 @@ def temp_db_path():
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         path = f.name
     yield path
-    os.unlink(path)
+    try:
+        os.unlink(path)
+    except PermissionError:
+        pass
 
 
 @pytest.fixture
