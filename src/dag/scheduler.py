@@ -5,6 +5,7 @@ from src.dag.feedback import FeedbackHandler
 
 CHECKPOINT_AGENT = "DataEnricher"
 CHECKPOINT_TIMEOUT = 30 * 60  # 30 minutes auto-release
+NODE_TIMEOUT = 300  # per-node timeout in seconds (5 min)
 
 QA_AGENT_TYPES = {"QA_FactCheck", "QA_LogicCheck"}
 CROSS_REVIEW_AGENT = "CrossReviewAgent"
@@ -82,7 +83,7 @@ class DAGScheduler:
 
     async def _run_node(self, node: DAGNode, executor, dag: TaskDAG):
         try:
-            await executor.execute(node)
+            await asyncio.wait_for(executor.execute(node), timeout=NODE_TIMEOUT)
             node.state = NodeState.COMPLETED
             await self._emit("node_completed", node)
             await self._emit("node_state_change", node)

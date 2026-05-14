@@ -81,6 +81,32 @@ export default function Monitor() {
           });
           break;
 
+        case 'dag_state':
+          /* full state snapshot on (re)connect */
+          {
+            const nodes = (evt as { nodes?: Array<{ node_id: string; agent_type: string; state: NodeState; depends_on: string[] }> }).nodes ?? [];
+            const agentMap = new Map<string, AgentState>();
+            const dagList: DAGNode[] = [];
+            for (const n of nodes) {
+              agentMap.set(n.node_id, {
+                node_id: n.node_id,
+                agent_type: n.agent_type,
+                state: n.state,
+                progress: n.state === 'completed' ? 100 : 0,
+              });
+              dagList.push({
+                node_id: n.node_id,
+                agent_type: n.agent_type,
+                depends_on: n.depends_on,
+                state: n.state,
+              });
+            }
+            setAgents(agentMap);
+            setDagNodes(dagList);
+            setTotalCost((evt as { total_cost?: number }).total_cost ?? 0);
+          }
+          break;
+
         case 'node_failed':
           setAgents(prev => {
             const next = new Map(prev);

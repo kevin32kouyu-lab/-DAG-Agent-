@@ -194,7 +194,36 @@ Respond with json now."""
         )
         result = self._extract_json(resp.content)
         if not result:
-            result = {"reasoning": resp.content[:500], "action": "finalize", "result": {}, "confidence": 0.5}
+            # Retry once with a correction prompt — the LLM produced unparseable output
+            correction = (
+                "Your last response was NOT valid JSON. You MUST output ONLY a valid JSON object "
+                "with no markdown, no XML tags, and no extra text. Wrap strings that contain "
+                "special characters properly. Respond with the JSON object now."
+            )
+            resp2 = await self.gateway.chat(
+                system=self.system_prompt,
+                messages=[
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": resp.content[:2000]},
+                    {"role": "user", "content": correction},
+                ],
+                model_tier=self.model_tier,
+                temperature=0.1,
+                response_format={"type": "json_object"},
+            )
+            result = self._extract_json(resp2.content)
+            if not result:
+                # Still failed — return a clear error finalize instead of silent empty
+                result = {
+                    "reasoning": "JSON parse failed after retry",
+                    "action": "finalize",
+                    "result": {"summary": "LLM response could not be parsed as JSON", "raw_snippet": resp.content[:300]},
+                    "confidence": 0.1,
+                }
+            else:
+                result["_prompt"] = prompt + "\n[correction retry]"
+                result["_response"] = resp2.content
+                return result
         result["_prompt"] = prompt
         result["_response"] = resp.content
         return result

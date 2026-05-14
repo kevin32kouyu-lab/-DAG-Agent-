@@ -130,11 +130,37 @@ def _ensure_callbacks_registered() -> None:
     scheduler.on("checkpoint_released", on_checkpoint_released)
 
 
+async def _send_dag_state(ws: WebSocket, task_id: str) -> None:
+    """Send full DAG state snapshot so reconnecting clients can restore UI."""
+    scheduler = get_scheduler()
+    dag = scheduler.get_task_dag(task_id)
+    if dag is None:
+        return
+    nodes_state = []
+    for node in dag.nodes:
+        nodes_state.append({
+            "node_id": node.node_id,
+            "agent_type": node.agent_type,
+            "state": node.state,
+            "depends_on": node.depends_on,
+            "retries": node.retries,
+            "error": node.context.get("error", ""),
+        })
+    await ws.send_json({
+        "event": "dag_state",
+        "task_id": task_id,
+        "nodes": nodes_state,
+        "total_cost": _task_costs.get(task_id, 0.0),
+    })
+
+
 @router.websocket("/ws/task/{task_id}")
 async def task_websocket(ws: WebSocket, task_id: str):
     await ws.accept()
     _ensure_callbacks_registered()
     active_connections.setdefault(task_id, []).append(ws)
+    # Send current state immediately so UI can restore on reconnect
+    await _send_dag_state(ws, task_id)
 
     try:
         while True:

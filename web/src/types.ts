@@ -138,7 +138,8 @@ export type WSEventType =
   | 'node_failed'
   | 'agent_log'
   | 'cost_update'
-  | 'qa_reject';
+  | 'qa_reject'
+  | 'dag_state';
 
 export interface WSBaseEvent {
   event: WSEventType;
@@ -191,13 +192,20 @@ export interface WSQAReject extends WSBaseEvent {
   qa_round: number;
 }
 
+export interface WSDagState extends WSBaseEvent {
+  event: 'dag_state';
+  nodes: Array<{ node_id: string; agent_type: AgentType; state: NodeState; depends_on: string[]; retries: number; error: string }>;
+  total_cost: number;
+}
+
 export type WSEvent =
   | WSNodeStateChange
   | WSNodeCompleted
   | WSNodeFailed
   | WSAgentLog
   | WSCostUpdate
-  | WSQAReject;
+  | WSQAReject
+  | WSDagState;
 
 /* History types */
 
