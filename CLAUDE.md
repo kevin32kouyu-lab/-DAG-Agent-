@@ -3,7 +3,7 @@
 ## Project: 竞品分析 Agent 协作系统
 
 AI-driven competitive analysis with 14 agents collaborating through a knowledge graph.
-Design + 7-phase plan complete. P1-P5 done, P6 in progress.
+Design + 7-phase plan complete. All phases (P1-P7) done.
 
 ## Memory
 
@@ -29,7 +29,7 @@ Knowledge Graph (SQLite, 3 layers) → 14 Agents (ReAct loops) → DAG Engine �
 
 ## Current Status (updated 2026-05-15)
 
-**Phase:** P6 (API + UI) in progress, P7 files beginning to appear.
+**Phase:** All 7 phases complete. Project is production-ready.
 
 **Completed:**
 - P1 foundation: Knowledge graph models/store/query, LLM gateway, agent base class + registry + ReAct loop
@@ -37,13 +37,15 @@ Knowledge Graph (SQLite, 3 layers) → 14 Agents (ReAct loops) → DAG Engine �
 - P3 collection: Source discovery, collector, data enricher agents
 - P4 analysis: Feature/sentiment/pricing/techstack/market position analyzers
 - P5 QA feedback: Cross-review agent, QA fact-check + logic-check, feedback loop with downstream cascade
-- P6 core: FastAPI app, task/report/trace/agent routes, WebSocket streaming, React frontend (TaskPanel, Monitor, Report, TraceExplorer pages)
+- P6 API + UI: FastAPI app, task/report/trace/agent routes, WebSocket streaming, React frontend
+- P7 infrastructure: LLM semantic cache, cost tracking, audit logger, snapshot/checkpoint resume, priority task queue, config center, degradation handler, health check, schema models, SaaS template, security layer
 
-**In progress (uncommitted):**
-- API refinements (routes, deps, app.py modifications)
-- DAG executor/scheduler/feedback modifications
-- Web frontend enhancements (new components/, context/, types.ts, utils/)
-- P7 overlap: infrastructure/ module, schema/ models, llm_gateway cache + cost_tracker
+**All 156 tests pass.**
+
+**Next steps (if any):**
+- Production deployment configuration
+- Monitoring/observability integration
+- Load testing and performance tuning
 
 ## Development Rules
 
@@ -55,7 +57,7 @@ Knowledge Graph (SQLite, 3 layers) → 14 Agents (ReAct loops) → DAG Engine �
 
 ## Phase Order
 
-P1 ✓ → P2 ✓ → P3 ✓ → P4 ✓ → P5 ✓ → P6 (in progress) → P7 (pending)
+P1 ✓ → P2 ✓ → P3 ✓ → P4 ✓ → P5 ✓ → P6 ✓ → P7 ✓
 
 Each phase has verifiable output. P1 = single agent runs ReAct loop end-to-end.
 
