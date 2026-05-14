@@ -52,3 +52,29 @@ def test_graph_write_tool_creates_node(store):
     ))
     assert "node_id" in result
     assert store.get_node(result["node_id"]) is not None
+
+
+def test_graph_write_created_by_populated(store):
+    tool = GraphWriteTool(store=store)
+    result = asyncio.run(tool.execute(
+        node_type="InsightNode",
+        data={"insight": "test", "confidence": 0.8},
+        _agent_type="FeatureAnalyzer",
+    ))
+    node = store.get_node(result["node_id"])
+    assert node.created_by == "FeatureAnalyzer"
+
+
+def test_graph_write_all_layer2_types(store):
+    """Verify all analysis-layer node types can be written."""
+    tool = GraphWriteTool(store=store)
+    test_cases = [
+        ("FeatureMatrix", {"products": ["A"], "dimensions": ["d"]}),
+        ("TechStack", {"product": "A", "languages": ["Python"]}),
+        ("MarketPosition", {"product": "A", "positioning": "leader"}),
+        ("Product", {"name": "Notion", "category": "SaaS"}),
+    ]
+    for node_type, data in test_cases:
+        result = asyncio.run(tool.execute(node_type=node_type, data=data))
+        assert "node_id" in result, f"Failed to create {node_type}"
+        assert store.get_node(result["node_id"]) is not None

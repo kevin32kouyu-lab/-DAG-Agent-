@@ -127,7 +127,7 @@ If finalize: {{"reasoning": "...", "action": "finalize", "result": {{...}}, "con
     async def _act(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
         tool = self.tool_registry.get(action)
         if tool:
-            return await tool.execute(**params)
+            return await tool.execute(**params, _agent_type=self.agent_type)
         return {"error": f"Tool '{action}' not found"}
 
     def _build_output(self, result: dict[str, Any]) -> Any:

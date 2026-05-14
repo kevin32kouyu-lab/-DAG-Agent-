@@ -125,6 +125,14 @@ class MetricDataNode(GraphNode):
     date: datetime | None = None
 
 
+class ProductNode(GraphNode):
+    node_type: NodeType = NodeType.PRODUCT
+    layer: int = 1
+    name: str
+    category: str = ""
+    url: str = ""
+
+
 # ── Layer 2: Analysis Nodes ──
 
 class FeatureNode(GraphNode):

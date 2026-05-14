@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from src.knowledge_graph.models import (
     SourceInfoNode, WebPageNode, FeatureNode, FeatureMatrixNode,
-    SWOTNode, ScoringNode, InsightNode, GraphEdge, EdgeType,
+    SWOTNode, ScoringNode, InsightNode, ProductNode, GraphEdge, EdgeType,
 )
 
 
@@ -58,3 +58,11 @@ def test_swot_node_lists():
     )
     assert len(node.strengths) == 2
     assert node.layer == 3
+
+
+def test_product_node():
+    node = ProductNode(name="Notion", category="all-in-one workspace", url="https://notion.so")
+    assert node.node_type == "Product"
+    assert node.layer == 1
+    assert node.name == "Notion"
+    assert node.category == "all-in-one workspace"

@@ -3,8 +3,9 @@ from src.agents.tools.base import ToolBase
 from src.knowledge_graph.store import GraphStore
 from src.knowledge_graph.models import (
     SourceInfoNode, WebPageNode, ReviewEntryNode, PricingDataNode,
-    NewsArticleNode, SocialPostNode, MetricDataNode,
-    FeatureNode, SentimentNode, PricingModelNode,
+    NewsArticleNode, SocialPostNode, MetricDataNode, ProductNode,
+    FeatureNode, FeatureMatrixNode, SentimentNode,
+    PricingModelNode, TechStackNode, MarketPositionNode,
     SWOTNode, ScoringNode, InsightNode,
     ReportSectionNode, CrossReviewFlagNode,
     GraphEdge, EdgeType,
@@ -15,10 +16,11 @@ NODE_TYPE_MAP: dict[str, type] = {
     "SourceInfo": SourceInfoNode, "WebPage": WebPageNode,
     "ReviewEntry": ReviewEntryNode, "PricingData": PricingDataNode,
     "NewsArticle": NewsArticleNode, "SocialPost": SocialPostNode,
-    "MetricData": MetricDataNode,
-    "FeatureNode": FeatureNode, "SentimentNode": SentimentNode,
-    "PricingModel": PricingModelNode, "SWOTNode": SWOTNode,
-    "ScoringNode": ScoringNode,
+    "MetricData": MetricDataNode, "Product": ProductNode,
+    "FeatureNode": FeatureNode, "FeatureMatrix": FeatureMatrixNode,
+    "SentimentNode": SentimentNode, "PricingModel": PricingModelNode,
+    "TechStack": TechStackNode, "MarketPosition": MarketPositionNode,
+    "SWOTNode": SWOTNode, "ScoringNode": ScoringNode,
     "InsightNode": InsightNode, "ReportSection": ReportSectionNode,
     "CrossReviewFlag": CrossReviewFlagNode,
 }
@@ -69,6 +71,10 @@ class GraphWriteTool(ToolBase):
         cls = NODE_TYPE_MAP.get(node_type)
         if cls is None:
             return {"error": f"Unknown node type: {node_type}"}
+
+        agent_type = kwargs.get("_agent_type", "")
+        if agent_type:
+            data["created_by"] = agent_type
 
         node = cls(**data)
         self.store.create_node(node)

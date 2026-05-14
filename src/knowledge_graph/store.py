@@ -4,7 +4,7 @@ from typing import Any
 from src.knowledge_graph.models import (
     GraphNode, GraphEdge, NodeType, EdgeType,
     SourceInfoNode, WebPageNode, ReviewEntryNode, PricingDataNode,
-    NewsArticleNode, SocialPostNode, MetricDataNode,
+    NewsArticleNode, SocialPostNode, MetricDataNode, ProductNode,
     FeatureNode, FeatureMatrixNode, SentimentNode,
     PricingModelNode, TechStackNode, MarketPositionNode,
     CrossReviewFlagNode, SWOTNode, ScoringNode, InsightNode, ReportSectionNode,
@@ -135,12 +135,14 @@ class GraphStore:
         all_props = {**metadata, **props, **extras}
         all_props["id"] = row["id"]
         all_props["label"] = row["label"]
+        all_props["layer"] = row["layer"]
+        all_props["created_by"] = row["created_by"]
 
         type_map = {
             "SourceInfo": SourceInfoNode, "WebPage": WebPageNode,
             "ReviewEntry": ReviewEntryNode, "PricingData": PricingDataNode,
             "NewsArticle": NewsArticleNode, "SocialPost": SocialPostNode,
-            "MetricData": MetricDataNode,
+            "MetricData": MetricDataNode, "Product": ProductNode,
             "FeatureNode": FeatureNode, "FeatureMatrix": FeatureMatrixNode,
             "SentimentNode": SentimentNode, "PricingModel": PricingModelNode,
             "TechStack": TechStackNode, "MarketPosition": MarketPositionNode,
