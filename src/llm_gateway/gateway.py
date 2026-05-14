@@ -39,7 +39,7 @@ class LLMGateway:
     def _get_anthropic(self):
         if self._anthropic_client is None:
             import anthropic
-            self._anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+            self._anthropic_client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
         return self._anthropic_client
 
     def _get_openai_client(self, model: str):
@@ -72,7 +72,7 @@ class LLMGateway:
     async def _chat_anthropic(self, model: str, system: str, messages: list[dict],
                               max_tokens: int, temperature: float) -> LLMResponse:
         client = self._get_anthropic()
-        resp = client.messages.create(
+        resp = await client.messages.create(
             model=model, system=system, messages=messages,
             max_tokens=max_tokens, temperature=temperature,
         )

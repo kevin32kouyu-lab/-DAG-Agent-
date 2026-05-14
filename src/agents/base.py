@@ -61,6 +61,8 @@ class BaseAgent(ABC):
             trace.confidence = thought.get("confidence")
             trace.llm_tokens = thought.get("tokens", 0)
             trace.llm_cost = thought.get("cost", 0.0)
+            trace.prompt_snapshot = thought.get("_prompt")
+            trace.response_snapshot = thought.get("_response")
 
             if thought.get("action") == "finalize":
                 trace.action = "finalize"
@@ -104,6 +106,7 @@ class BaseAgent(ABC):
 
     async def _think(self, observation: dict[str, Any]) -> dict[str, Any]:
         tools_desc = self.tool_registry.describe_tools() if self.tool_registry else []
+        user_content = str(observation)[:8000]
         prompt = f"""{self.system_prompt}
 
 Available tools: {tools_desc}
@@ -115,14 +118,17 @@ If finalize: {{"reasoning": "...", "action": "finalize", "result": {{...}}, "con
 """
         resp = await self.gateway.chat(
             system=self.system_prompt,
-            messages=[{"role": "user", "content": str(observation)[:8000]}],
+            messages=[{"role": "user", "content": user_content}],
             model_tier="analysis",
         )
         import json
         try:
-            return json.loads(resp.content)
+            result = json.loads(resp.content)
         except json.JSONDecodeError:
-            return {"reasoning": resp.content, "action": "finalize", "result": {}, "confidence": 0.5}
+            result = {"reasoning": resp.content, "action": "finalize", "result": {}, "confidence": 0.5}
+        result["_prompt"] = prompt
+        result["_response"] = resp.content
+        return result
 
     async def _act(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
         tool = self.tool_registry.get(action)

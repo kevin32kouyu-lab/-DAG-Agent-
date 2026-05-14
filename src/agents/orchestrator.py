@@ -18,8 +18,8 @@ Available agent types and their dependencies:
 - SentimentAnalyzer: depends_on [DataEnricher]
 - PricingAnalyst: depends_on [DataEnricher]
 - TechStackAnalyzer: depends_on [DataEnricher]
-- MarketPosition: depends_on [DataEnricher]
-- CrossReviewAgent: depends_on [FeatureAnalyzer, SentimentAnalyzer, PricingAnalyst, TechStackAnalyzer, MarketPosition]
+- MarketPositionAnalyzer: depends_on [DataEnricher]
+- CrossReviewAgent: depends_on [FeatureAnalyzer, SentimentAnalyzer, PricingAnalyst, TechStackAnalyzer, MarketPositionAnalyzer]
 - SWOTAnalyzer: depends_on [CrossReviewAgent] (or analysis agents if no cross-review)
 - Writer: depends_on [SWOTAnalyzer]
 - QA_FactCheck: depends_on [Writer]
@@ -61,7 +61,7 @@ Rules:
         prompt = f"""Generate a DAG for competitive analysis of: {targets}
 Schema: {json.dumps(schema, default=str)}
 Dimensions to include (from schema.dimensions or saas defaults):
-  - FeatureAnalyzer, SentimentAnalyzer, PricingAnalyst, TechStackAnalyzer, MarketPosition
+  - FeatureAnalyzer, SentimentAnalyzer, PricingAnalyst, TechStackAnalyzer, MarketPositionAnalyzer
 Excluded dimensions: {schema.get('exclude_dimensions', [])}
 """
         resp = await self.gateway.chat(

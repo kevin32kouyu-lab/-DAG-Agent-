@@ -94,6 +94,7 @@ class GraphStore:
         return [self._row_to_edge(r) for r in rows]
 
     def trace_upstream(self, node_id: str, max_depth: int = 5) -> list[GraphEdge]:
+        """Follow DERIVED_FROM edges upstream — outgoing edges point from derived node to source data."""
         visited: set[str] = set()
         result: list[GraphEdge] = []
         queue = [node_id]
@@ -104,12 +105,10 @@ class GraphStore:
             if current in visited:
                 continue
             visited.add(current)
-            for edges_method in [self.get_edges_for_source, self.get_edges_for_target]:
-                for edge in edges_method(current):
-                    result.append(edge)
-                    for nid in [edge.source_id, edge.target_id]:
-                        if nid not in visited:
-                            queue.append(nid)
+            for edge in self.get_edges_for_source(current):
+                result.append(edge)
+                if edge.target_id not in visited:
+                    queue.append(edge.target_id)
         return result
 
     def delete_node(self, node_id: str) -> None:
