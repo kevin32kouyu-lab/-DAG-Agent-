@@ -1,6 +1,6 @@
 import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from src.agents.source_discovery import SourceDiscoveryAgent
 from src.llm_gateway.gateway import LLMGateway, LLMResponse
 from src.knowledge_graph.store import GraphStore
@@ -81,9 +81,16 @@ async def test_collector_scrapes_and_stores_webpage(collector_agent):
         ),
     ])
 
-    task = {"task_id": "t1", "node_id": "c1", "agent_type": "Collector",
-            "input_query": {"urls": ["https://notion.so/pricing"], "product": "Notion"},
-            "context": {}}
+    mock_html = "<html><head><title>Notion Pricing</title></head><body><p>Free plan with essential features.</p></body></html>"
+    mock_resp = MagicMock()
+    mock_resp.text = mock_html
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
 
-    output, traces = await collector_agent.execute(task)
-    assert output.status == "completed"
+    with patch("httpx.AsyncClient.get", AsyncMock(return_value=mock_resp)):
+        task = {"task_id": "t1", "node_id": "c1", "agent_type": "Collector",
+                "input_query": {"urls": ["https://notion.so/pricing"], "product": "Notion"},
+                "context": {}}
+
+        output, traces = await collector_agent.execute(task)
+        assert output.status == "completed"

@@ -60,12 +60,13 @@ class LLMGateway:
         model: str | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.3,
+        response_format: dict[str, str] | None = None,
     ) -> LLMResponse:
         resolved = model or self.resolve_model(model_tier)
         provider = self._get_provider(resolved)
 
         if provider == "openai_compatible":
-            return await self._chat_openai(resolved, system, messages, max_tokens, temperature)
+            return await self._chat_openai(resolved, system, messages, max_tokens, temperature, response_format)
         else:
             return await self._chat_anthropic(resolved, system, messages, max_tokens, temperature)
 
@@ -86,13 +87,14 @@ class LLMGateway:
         )
 
     async def _chat_openai(self, model: str, system: str, messages: list[dict],
-                           max_tokens: int, temperature: float) -> LLMResponse:
+                           max_tokens: int, temperature: float,
+                           response_format: dict[str, str] | None = None) -> LLMResponse:
         client = self._get_openai_client(model)
         api_messages = [{"role": "system", "content": system}] + messages
-        resp = await client.chat.completions.create(
-            model=model, messages=api_messages,
-            max_tokens=max_tokens, temperature=temperature,
-        )
+        kwargs = dict(model=model, messages=api_messages, max_tokens=max_tokens, temperature=temperature)
+        if response_format:
+            kwargs["response_format"] = response_format
+        resp = await client.chat.completions.create(**kwargs)
         return LLMResponse(
             content=resp.choices[0].message.content or "",
             model=model,

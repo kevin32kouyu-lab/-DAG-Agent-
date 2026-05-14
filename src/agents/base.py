@@ -98,34 +98,101 @@ class BaseAgent(ABC):
             node_type=query.get("node_type"),
             layer=query.get("layer"),
         )
+        history_summary = []
+        for entry in self.context.history[-5:]:
+            thought = entry.get("thought", {})
+            result = entry.get("result", {})
+            history_summary.append({
+                "action": thought.get("action", "unknown"),
+                "params": thought.get("params", {}),
+                "result_summary": str(result)[:500],
+            })
         return {
             "nodes": [n.model_dump(mode="json") for n in nodes],
             "nodes_read": [n.id for n in nodes],
             "task": task,
+            "previous_actions": history_summary,
         }
+
+    @staticmethod
+    def _extract_json(text: str) -> dict[str, Any]:
+        import json
+        import re
+        candidates: list[dict] = []
+
+        # 1) Raw parse
+        try:
+            d = json.loads(text)
+            if isinstance(d, dict):
+                candidates.append(d)
+        except json.JSONDecodeError:
+            pass
+
+        # 2) Extract from ```json ... ``` blocks
+        for match in re.finditer(r"```(?:json)?\s*([\s\S]*?)\s*```", text):
+            try:
+                d = json.loads(match.group(1))
+                if isinstance(d, dict):
+                    candidates.append(d)
+            except json.JSONDecodeError:
+                pass
+
+        # 3) Extract all brace-balanced { ... } pairs
+        brace_starts = [i for i, ch in enumerate(text) if ch == "{"]
+        for start in brace_starts:
+            depth = 0
+            for i in range(start, len(text)):
+                if text[i] == "{":
+                    depth += 1
+                elif text[i] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            d = json.loads(text[start:i + 1])
+                            if isinstance(d, dict):
+                                candidates.append(d)
+                        except json.JSONDecodeError:
+                            pass
+                        break
+
+        # Prefer candidates with "action" field, then largest
+        if candidates:
+            with_action = [c for c in candidates if "action" in c]
+            chosen = with_action[0] if with_action else max(candidates, key=lambda c: len(c))
+            return chosen
+        return {}
 
     async def _think(self, observation: dict[str, Any]) -> dict[str, Any]:
         tools_desc = self.tool_registry.describe_tools() if self.tool_registry else []
         user_content = str(observation)[:8000]
-        prompt = f"""{self.system_prompt}
+        prompt = f"""Available tools: {tools_desc}
 
-Available tools: {tools_desc}
+Current state (Observation): {observation}
 
-Observation: {observation}
+CRITICAL: You MUST respond with a single JSON object and nothing else.
+- No XML tags (<function>, <parameter>, <value>, etc.)
+- No markdown code blocks (no ```)
+- No explanatory text before or after the JSON
+- Just the raw JSON object on one line
 
-Respond with JSON: {{"reasoning": "...", "action": "tool_name" | "finalize", "params": {{...}}, "confidence": 0.0-1.0}}
-If finalize: {{"reasoning": "...", "action": "finalize", "result": {{...}}, "confidence": 0.0-1.0}}
-"""
+Format for tool call:
+{{"reasoning": "why I chose this action", "action": "tool_name", "params": {{"param1": "value1"}}, "confidence": 0.85}}
+
+Format for final answer:
+{{"reasoning": "summary of what I found", "action": "finalize", "result": {{"summary": "...", "nodes_created": [], "edges_created": []}}, "confidence": 0.85}}
+
+Respond with json now."""
+
         resp = await self.gateway.chat(
             system=self.system_prompt,
-            messages=[{"role": "user", "content": user_content}],
+            messages=[{"role": "user", "content": prompt}],
             model_tier="analysis",
+            temperature=0.1,
+            response_format={"type": "json_object"},
         )
-        import json
-        try:
-            result = json.loads(resp.content)
-        except json.JSONDecodeError:
-            result = {"reasoning": resp.content, "action": "finalize", "result": {}, "confidence": 0.5}
+        result = self._extract_json(resp.content)
+        if not result:
+            result = {"reasoning": resp.content[:500], "action": "finalize", "result": {}, "confidence": 0.5}
         result["_prompt"] = prompt
         result["_response"] = resp.content
         return result

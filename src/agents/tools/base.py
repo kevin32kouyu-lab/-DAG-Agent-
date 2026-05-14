@@ -20,9 +20,9 @@ class ToolRegistry:
     def register(self, tool_cls: type[ToolBase], **deps) -> None:
         name = tool_cls.name
         self._tools[name] = tool_cls
+        self._deps[name] = deps
         if deps:
             self._instances[name] = tool_cls(**deps)
-        self._deps[name] = deps
 
     def create_instance(self, name: str, **deps) -> ToolBase:
         cls = self._tools.get(name)
@@ -34,7 +34,16 @@ class ToolRegistry:
         return instance
 
     def get(self, name: str) -> ToolBase | None:
-        return self._instances.get(name)
+        inst = self._instances.get(name)
+        if inst is not None:
+            return inst
+        cls = self._tools.get(name)
+        if cls is not None:
+            deps = self._deps.get(name, {})
+            inst = cls(**deps)
+            self._instances[name] = inst
+            return inst
+        return None
 
     def list_tools(self) -> list[str]:
         return list(self._tools.keys())
