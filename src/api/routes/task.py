@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from uuid import uuid4
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from src.api.deps import get_store, get_gateway, get_scheduler
 from src.agents.orchestrator import OrchestratorAgent
@@ -32,7 +34,7 @@ class TaskResponse(BaseModel):
 
 @router.post("/task", response_model=TaskResponse)
 async def create_task(req: CreateTaskRequest):
-    task_id = f"task_{len(req.targets)}_{hash(tuple(req.targets))}"
+    task_id = f"task_{len(req.targets)}_{uuid4().hex[:8]}"
     store = get_store()
     gateway = get_gateway()
     tools = ToolRegistry()
@@ -42,9 +44,9 @@ async def create_task(req: CreateTaskRequest):
     try:
         dag, _ = await orch.execute({"task_id": task_id, "targets": req.targets, "schema": req.model_dump()})
     except Exception as e:
-        raise HTTPException(500, f"Failed to generate DAG: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate DAG: {e}")
     if dag is None:
-        raise HTTPException(500, "Failed to generate DAG")
+        raise HTTPException(status_code=500, detail="Failed to generate DAG")
     return TaskResponse(
         task_id=task_id, status="created",
         dag_nodes=[{"node_id": n.node_id, "agent_type": n.agent_type, "depends_on": n.depends_on, "state": n.state} for n in dag.nodes],

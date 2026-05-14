@@ -10,7 +10,7 @@ async def trace_insight(task_id: str, insight_id: str, include_steps: bool = Que
     store = get_store()
     node = store.get_node(insight_id)
     if node is None:
-        raise HTTPException(404, "Insight not found")
+        raise HTTPException(status_code=404, detail="Insight not found")
     chain = bfs_trace(store, insight_id)
     contradictions = find_contradictions(store, insight_id)
     breakdown = get_confidence_breakdown(store, insight_id)

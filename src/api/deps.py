@@ -1,6 +1,5 @@
 import logging
 import os
-from functools import lru_cache
 from src.knowledge_graph.store import GraphStore
 from src.llm_gateway.gateway import LLMGateway
 from src.dag.scheduler import DAGScheduler
