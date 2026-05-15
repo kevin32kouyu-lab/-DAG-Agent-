@@ -36,7 +36,7 @@ def _layer1_report_sections(store, task_id: str) -> list[dict]:
     return sections
 
 
-def _layer2_writer_output(scheduler, task_id: str) -> list[dict] | None:
+def _layer2_report_generator_output(scheduler, task_id: str) -> list[dict] | None:
     """Fallback 1: ReportGenerator completed but didn't persist to graph."""
     dag = scheduler.get_task_dag(task_id)
     if not dag:
@@ -129,9 +129,9 @@ async def get_report(task_id: str, format: str = Query("markdown")):
     # Layer 1: ReportSection nodes in graph
     sections = _layer1_report_sections(store, task_id)
 
-    # Layer 2: Writer output data
+    # Layer 2: ReportGenerator output data
     if not sections:
-        sections = _layer2_writer_output(scheduler, task_id)
+        sections = _layer2_report_generator_output(scheduler, task_id)
 
     # Layer 3: Assembled partial report
     if not sections:

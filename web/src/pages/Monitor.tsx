@@ -48,13 +48,18 @@ export default function Monitor() {
   /* sync WS status to context + cleanup on unmount */
   useEffect(() => {
     setWsConnected(connectionStatus === 'connected');
+    return () => { setWsConnected(false); };
+  }, [connectionStatus, setWsConnected]);
+
+  /* phase transition: connecting -> planning */
+  useEffect(() => {
     if (connectionStatus === 'connected' && phase === 'connecting') {
       setPhase('planning');
     }
-    return () => { setWsConnected(false); };
-  }, [connectionStatus, setWsConnected, phase]);
+  }, [connectionStatus, phase]);
 
   const processedCount = useRef(0);
+  const completionNotified = useRef(false);
 
   /* process incoming WebSocket events incrementally */
   useEffect(() => {
@@ -181,8 +186,8 @@ export default function Monitor() {
 
         case 'cost_update':
           setTotalCost(evt.total_cost);
-          setTotalTokens((evt as unknown as { total_tokens?: number }).total_tokens ?? totalTokens);
-          setPagesCollected((evt as unknown as { pages_collected?: number }).pages_collected ?? pagesCollected);
+          setTotalTokens(prev => (evt as unknown as { total_tokens?: number }).total_tokens ?? prev);
+          setPagesCollected(prev => (evt as unknown as { pages_collected?: number }).pages_collected ?? prev);
           break;
 
         case 'qa_reject':
@@ -208,15 +213,17 @@ export default function Monitor() {
   const running = agentList.filter(a => a.state === 'running').length;
   const failed = agentList.filter(a => a.state === 'failed').length;
 
-  /* update history when task finishes */
+  /* update history when task finishes — guard with ref to prevent re-triggering */
   useEffect(() => {
-    if (agentList.length === 0 || !id) return;
+    if (agentList.length === 0 || !id || completionNotified.current) return;
     const allDone = agentList.every(a => a.state === 'completed');
     const anyFailed = agentList.some(a => a.state === 'failed');
     if (allDone) {
+      completionNotified.current = true;
       updateHistoryTask(id, { status: 'completed', duration: '已完成' });
       toast('任务已全部完成', 'success');
     } else if (anyFailed) {
+      completionNotified.current = true;
       updateHistoryTask(id, { status: 'failed', duration: '失败' });
       toast('部分节点执行失败', 'error');
     }

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type { HistoryTask } from '../types';
 
 function loadHistory(): HistoryTask[] {
@@ -9,6 +9,8 @@ function loadHistory(): HistoryTask[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch { return []; }
 }
+
+const MAX_HISTORY = 20;
 
 interface TaskContextValue {
   activeTaskId: string | null;
@@ -34,22 +36,24 @@ export function TaskContextProvider({ children }: { children: ReactNode }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [taskHistory, setTaskHistory] = useState<HistoryTask[]>(loadHistory);
   const [wsConnected, setWsConnected] = useState(false);
+  const isFirstRender = useRef(true);
+
+  // Persist history to localStorage on change (skip initial mount)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    try { localStorage.setItem('compagent_history', JSON.stringify(taskHistory)); } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('historyUpdated', { detail: taskHistory }));
+  }, [taskHistory]);
 
   const addToHistory = useCallback((task: HistoryTask) => {
-    setTaskHistory(prev => {
-      const next = [task, ...prev.filter(h => h.id !== task.id)].slice(0, 20);
-      try { localStorage.setItem('compagent_history', JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
+    setTaskHistory(prev => [task, ...prev.filter(h => h.id !== task.id)].slice(0, MAX_HISTORY));
   }, []);
 
   const updateHistoryTask = useCallback((id: string, patch: Partial<HistoryTask>) => {
-    setTaskHistory(prev => {
-      const next = prev.map(h => h.id === id ? { ...h, ...patch } : h);
-      try { localStorage.setItem('compagent_history', JSON.stringify(next)); } catch { /* ignore */ }
-      window.dispatchEvent(new CustomEvent('historyUpdated', { detail: next }));
-      return next;
-    });
+    setTaskHistory(prev => prev.map(h => h.id === id ? { ...h, ...patch } : h));
   }, []);
 
   return (

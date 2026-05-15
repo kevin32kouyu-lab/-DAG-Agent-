@@ -138,6 +138,7 @@ class GraphStore:
         all_props["label"] = row["label"]
         all_props["layer"] = row["layer"]
         all_props["created_by"] = row["created_by"]
+        all_props["created_at"] = row["created_at"]
 
         type_map = {
             "SourceInfo": SourceInfoNode, "WebPage": WebPageNode,

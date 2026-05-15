@@ -65,6 +65,8 @@ class AgentExecutor:
             return
 
         output, traces = raw_output
+        if output is None:
+            raise RuntimeError(f"{node.agent_type} returned None — DAG generation or agent execution failed")
 
         if hasattr(output, 'status') and output.status == "failed":
             raise RuntimeError(f"{node.agent_type} failed: {getattr(output, 'summary', 'unknown')}")

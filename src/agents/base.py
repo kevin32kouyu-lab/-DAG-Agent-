@@ -121,6 +121,8 @@ class BaseAgent(ABC):
     def _extract_json(text: str) -> dict[str, Any]:
         import json
         import re
+        if not text:
+            return {}
         candidates: list[tuple[int, dict]] = []
 
         # 1) Raw parse (position 0 = earliest possible)
@@ -128,7 +130,7 @@ class BaseAgent(ABC):
             d = json.loads(text)
             if isinstance(d, dict):
                 candidates.append((0, d))
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
             pass
 
         # 2) Extract from ```json ... ``` blocks
@@ -137,7 +139,7 @@ class BaseAgent(ABC):
                 d = json.loads(match.group(1))
                 if isinstance(d, dict):
                     candidates.append((match.start(), d))
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, TypeError):
                 pass
 
         # 3) Extract all brace-balanced { ... } pairs
@@ -154,7 +156,7 @@ class BaseAgent(ABC):
                             d = json.loads(text[start:i + 1])
                             if isinstance(d, dict):
                                 candidates.append((start, d))
-                        except json.JSONDecodeError:
+                        except (json.JSONDecodeError, TypeError):
                             pass
                         break
 
@@ -208,7 +210,7 @@ Respond with json now."""
                 system=self.system_prompt,
                 messages=[
                     {"role": "user", "content": prompt},
-                    {"role": "assistant", "content": resp.content[:2000]},
+                    {"role": "assistant", "content": (resp.content or "")[:2000]},
                     {"role": "user", "content": correction},
                 ],
                 model_tier=self.model_tier,

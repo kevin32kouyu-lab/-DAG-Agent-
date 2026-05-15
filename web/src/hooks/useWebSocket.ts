@@ -16,7 +16,12 @@ export function useWebSocket(taskId: string) {
 
   const connect = useCallback(() => {
     if (!taskId) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (wsRef.current) {
+      if (wsRef.current.readyState === WebSocket.OPEN) return;
+      if (wsRef.current.readyState === WebSocket.CONNECTING) return;
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+    }
 
     setConnectionStatus('connecting');
     const { protocol, host } = window.location;

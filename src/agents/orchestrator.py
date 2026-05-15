@@ -122,10 +122,24 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
 
     # Agent types that MUST exist in every DAG regardless of exclude_dimensions.
     MANDATORY_AGENTS = ["ReportGenerator", "QA_FactCheck", "QA_LogicCheck"]
-    # The final analysis node that Writer should depend on if SWOT is absent.
-    FALLBACK_WRITER_DEP = "FeatureAnalyzer"
+    # The final analysis node that ReportGenerator should depend on if SWOT is absent.
+    FALLBACK_REPORT_DEP = "FeatureAnalyzer"
 
     def _json_to_dag(self, dag_json: dict) -> TaskDAG:
+        raw_nodes = dag_json.get("nodes", [])
+        validated = []
+        for i, n in enumerate(raw_nodes):
+            if not isinstance(n, dict):
+                continue
+            if "node_id" not in n or "agent_type" not in n:
+                continue
+            n = dict(n)
+            n.setdefault("input_query", {})
+            n.setdefault("depends_on", [])
+            n.setdefault("priority", 0)
+            validated.append(n)
+        if not validated and raw_nodes:
+            raise ValueError(f"All {len(raw_nodes)} nodes from LLM are missing node_id/agent_type")
         nodes = [
             DAGNode(
                 node_id=n["node_id"],
@@ -134,7 +148,7 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
                 depends_on=n.get("depends_on", []),
                 priority=n.get("priority", 0),
             )
-            for n in dag_json.get("nodes", [])
+            for n in validated
         ]
         return TaskDAG(task_id=dag_json.get("task_id", ""), nodes=nodes)
 
@@ -207,7 +221,10 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
             existing_types.add("ReportGenerator")
 
         # QA agents: always required, depend on ReportGenerator
-        writer_id = next(n["node_id"] for n in nodes if n["agent_type"] == "ReportGenerator")
+        writer_node = next((n for n in nodes if n["agent_type"] == "ReportGenerator"), None)
+        if writer_node is None:
+            raise RuntimeError("ReportGenerator node missing after mandatory injection")
+        writer_id = writer_node["node_id"]
         for qa_type in ["QA_FactCheck", "QA_LogicCheck"]:
             if qa_type not in existing_types:
                 nodes.append({

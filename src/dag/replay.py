@@ -24,8 +24,11 @@ class ReplayAgentExecutor(AgentExecutor):
         self._dag_json: dict | None = None
 
         if fixture_path:
-            with open(fixture_path, encoding="utf-8") as f:
-                data = json.load(f)
+            try:
+                with open(fixture_path, encoding="utf-8") as f:
+                    data = json.load(f)
+            except FileNotFoundError:
+                return
             self._dag_json = data.get("dag", {})
             for entry in data.get("outputs", []):
                 self._outputs[entry["node_id"]] = entry
@@ -72,8 +75,9 @@ class ReplayAgentExecutor(AgentExecutor):
 
             # Reconstruct traces
             traces = []
+            from src.agents.base import StepTrace
+
             for t in recorded.get("traces", []):
-                from src.agents.base import StepTrace
                 traces.append(StepTrace(
                     task_id=t.get("task_id", ""),
                     node_id=t.get("node_id", node.node_id),
@@ -83,8 +87,8 @@ class ReplayAgentExecutor(AgentExecutor):
                     confidence=t.get("confidence", 0.8),
                     action=t.get("action", ""),
                     action_params=t.get("action_params", {}),
-                    nodes_read=t.get("nodes_read", []),
-                    nodes_written=t.get("nodes_written", []),
+                    data_nodes_read=t.get("nodes_read", []),
+                    nodes_created=t.get("nodes_written", []),
                     llm_tokens=t.get("llm_tokens", 0),
                     llm_cost=t.get("llm_cost", 0.0),
                 ))

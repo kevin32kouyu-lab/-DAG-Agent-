@@ -94,10 +94,15 @@ class GraphWriteTool(ToolBase):
         source_id = kwargs.get("source_id")
         edge_type_str = kwargs.get("edge_type")
         if source_id and edge_type_str:
+            try:
+                edge_type = EdgeType(edge_type_str)
+            except ValueError:
+                valid = [e.value for e in EdgeType]
+                return {"node_id": node.id, "error": f"Invalid edge_type '{edge_type_str}'. Valid: {valid}"}
             edge = GraphEdge(
                 source_id=source_id,
                 target_id=node.id,
-                edge_type=EdgeType(edge_type_str),
+                edge_type=edge_type,
             )
             self.store.create_edge(edge)
             return {"node_id": node.id, "edge_id": edge.id}
