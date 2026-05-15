@@ -5,7 +5,25 @@ router = APIRouter()
 
 active_connections: dict[str, list[WebSocket]] = {}
 _task_costs: dict[str, float] = {}
+_task_tokens: dict[str, int] = {}
+_task_pages: dict[str, int] = {}
+_cleaned_tasks: set[str] = set()
 _callbacks_registered = False
+
+
+def _cleanup_task(task_id: str, delay: float = 300.0) -> None:
+    """Schedule cleanup of task tracking state after a delay."""
+    import asyncio
+
+    async def _cleanup():
+        await asyncio.sleep(delay)
+        active_connections.pop(task_id, None)
+        _task_costs.pop(task_id, None)
+        _task_tokens.pop(task_id, None)
+        _task_pages.pop(task_id, None)
+        _cleaned_tasks.discard(task_id)
+
+    asyncio.ensure_future(_cleanup())
 
 
 async def _broadcast(task_id: str, event: dict):
@@ -48,6 +66,11 @@ def _ensure_callbacks_registered() -> None:
                 "state": node.state,
                 "depends_on": node.depends_on,
             })
+            # Schedule cleanup if DAG reached terminal state
+            dag = scheduler.get_task_dag(task_id)
+            if dag and dag.is_terminal() and task_id not in _cleaned_tasks:
+                _cleaned_tasks.add(task_id)
+                _cleanup_task(task_id)
 
     async def on_node_failed(node):
         task_id = node.context.get("task_id", "")
@@ -58,6 +81,11 @@ def _ensure_callbacks_registered() -> None:
                 "node_id": node.node_id,
                 "agent_type": node.agent_type,
             })
+            # Schedule cleanup if DAG reached terminal state
+            dag = scheduler.get_task_dag(task_id)
+            if dag and dag.is_terminal() and task_id not in _cleaned_tasks:
+                _cleaned_tasks.add(task_id)
+                _cleanup_task(task_id)
 
     async def on_agent_log(task_id: str, node_id: str, agent_type: str, step: int,
                            phase: str, summary: str):
@@ -71,13 +99,18 @@ def _ensure_callbacks_registered() -> None:
             "summary": summary,
         })
 
-    async def on_cost_update(task_id: str, delta_cost: float, total_cost: float):
+    async def on_cost_update(task_id: str, delta_cost: float, total_cost: float,
+                               total_tokens: int = 0, pages_collected: int = 0):
         _task_costs[task_id] = total_cost
+        _task_tokens[task_id] = total_tokens
+        _task_pages[task_id] = pages_collected
         await _broadcast(task_id, {
             "event": "cost_update",
             "task_id": task_id,
             "delta_cost": delta_cost,
             "total_cost": total_cost,
+            "total_tokens": total_tokens,
+            "pages_collected": pages_collected,
         })
 
     async def on_qa_reject(task_id: str, qa_agent_type: str, failed_nodes: list[str],
@@ -129,12 +162,41 @@ def _ensure_callbacks_registered() -> None:
     scheduler.on("checkpoint_reached", on_checkpoint_reached)
     scheduler.on("checkpoint_released", on_checkpoint_released)
 
+    async def on_dag_created(task_id: str, nodes: list[dict]):
+        await _broadcast(task_id, {
+            "event": "dag_created",
+            "task_id": task_id,
+            "nodes": nodes,
+            "total_cost": _task_costs.get(task_id, 0.0),
+            "total_tokens": _task_tokens.get(task_id, 0),
+            "pages_collected": _task_pages.get(task_id, 0),
+        })
+
+    async def on_dag_failed(task_id: str, error: str):
+        await _broadcast(task_id, {
+            "event": "dag_failed",
+            "task_id": task_id,
+            "error": error,
+        })
+
+    scheduler.on("dag_created", on_dag_created)
+    scheduler.on("dag_failed", on_dag_failed)
+
 
 async def _send_dag_state(ws: WebSocket, task_id: str) -> None:
     """Send full DAG state snapshot so reconnecting clients can restore UI."""
     scheduler = get_scheduler()
     dag = scheduler.get_task_dag(task_id)
     if dag is None:
+        await ws.send_json({
+            "event": "dag_state",
+            "task_id": task_id,
+            "nodes": [],
+            "status": "planning",
+            "total_cost": _task_costs.get(task_id, 0.0),
+            "total_tokens": _task_tokens.get(task_id, 0),
+            "pages_collected": _task_pages.get(task_id, 0),
+        })
         return
     nodes_state = []
     for node in dag.nodes:
@@ -151,6 +213,8 @@ async def _send_dag_state(ws: WebSocket, task_id: str) -> None:
         "task_id": task_id,
         "nodes": nodes_state,
         "total_cost": _task_costs.get(task_id, 0.0),
+        "total_tokens": _task_tokens.get(task_id, 0),
+        "pages_collected": _task_pages.get(task_id, 0),
     })
 
 
