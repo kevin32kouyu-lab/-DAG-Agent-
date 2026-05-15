@@ -13,6 +13,7 @@ const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
   pending:   { label: '○ 等待', classes: 'text-gray-500 bg-gray-500/10 border-gray-500/30' },
   ready:     { label: '◉ 就绪', classes: 'text-blue-400 bg-blue-400/10 border-blue-400/30' },
   degraded:  { label: '⚠ 降级', classes: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
+  planning:  { label: '◌ 规划中', classes: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30' },
 };
 
 export default function StatusBadge({ status, label, pulse }: StatusBadgeProps) {
@@ -35,6 +36,7 @@ export function StatusDot({ state }: { state: NodeState | string }) {
     pending: 'bg-gray-600',
     ready: 'bg-blue-500',
     degraded: 'bg-yellow-600',
+    planning: 'bg-cyan-500 animate-pulse',
   };
   return <span className={`w-2 h-2 rounded-full ${colors[state] || 'bg-gray-600'}`} />;
 }
