@@ -5,6 +5,7 @@ import { useTaskContext } from '../context/TaskContext';
 import { useToast } from '../components/Toast';
 import AgentCard from '../components/AgentCard';
 import DAGGraph from '../components/DAGGraph';
+import PipelineSkeleton from '../components/PipelineSkeleton';
 import type { AgentState, AgentGroup, DAGNode, WSEvent, NodeState } from '../types';
 
 /* ---- agent grouping ---- */
@@ -37,15 +38,21 @@ export default function Monitor() {
   const { toast } = useToast();
   const [agents, setAgents] = useState<Map<string, AgentState>>(new Map());
   const [totalCost, setTotalCost] = useState(0);
+  const [totalTokens, setTotalTokens] = useState(0);
+  const [pagesCollected, setPagesCollected] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
   const [dagNodes, setDagNodes] = useState<DAGNode[]>([]);
+  const [phase, setPhase] = useState<'connecting' | 'planning' | 'executing' | 'done'>('connecting');
   const [showLogs, setShowLogs] = useState(false);
 
   /* sync WS status to context + cleanup on unmount */
   useEffect(() => {
     setWsConnected(connectionStatus === 'connected');
+    if (connectionStatus === 'connected' && phase === 'connecting') {
+      setPhase('planning');
+    }
     return () => { setWsConnected(false); };
-  }, [connectionStatus, setWsConnected]);
+  }, [connectionStatus, setWsConnected, phase]);
 
   const processedCount = useRef(0);
 
@@ -90,6 +97,11 @@ export default function Monitor() {
           /* full state snapshot on (re)connect */
           {
             const nodes = (evt as { nodes?: Array<{ node_id: string; agent_type: string; state: NodeState; depends_on: string[] }> }).nodes ?? [];
+            if (nodes.length === 0) {
+              setPhase('planning');
+              break;
+            }
+            setPhase('executing');
             const agentMap = new Map<string, AgentState>();
             const dagList: DAGNode[] = [];
             for (const n of nodes) {
@@ -109,7 +121,41 @@ export default function Monitor() {
             setAgents(agentMap);
             setDagNodes(dagList);
             setTotalCost((evt as { total_cost?: number }).total_cost ?? 0);
+            setTotalTokens((evt as { total_tokens?: number }).total_tokens ?? 0);
+            setPagesCollected((evt as { pages_collected?: number }).pages_collected ?? 0);
           }
+          break;
+
+        case 'dag_created': {
+          const nodes = (evt as { nodes?: Array<{ node_id: string; agent_type: string; state: NodeState; depends_on: string[] }> }).nodes ?? [];
+          const agentMap = new Map<string, AgentState>();
+          const dagList: DAGNode[] = [];
+          for (const n of nodes) {
+            agentMap.set(n.node_id, {
+              node_id: n.node_id,
+              agent_type: n.agent_type,
+              state: n.state,
+              progress: 0,
+            });
+            dagList.push({
+              node_id: n.node_id,
+              agent_type: n.agent_type,
+              depends_on: n.depends_on,
+              state: n.state,
+            });
+          }
+          setAgents(agentMap);
+          setDagNodes(dagList);
+          setTotalCost((evt as { total_cost?: number }).total_cost ?? 0);
+          setTotalTokens((evt as { total_tokens?: number }).total_tokens ?? 0);
+          setPagesCollected((evt as { pages_collected?: number }).pages_collected ?? 0);
+          setPhase('executing');
+          break;
+        }
+
+        case 'dag_failed':
+          setPhase('done');
+          toast(`DAG 规划失败: ${(evt as { error?: string }).error || '未知错误'}`, 'error');
           break;
 
         case 'node_failed':
@@ -135,6 +181,8 @@ export default function Monitor() {
 
         case 'cost_update':
           setTotalCost(evt.total_cost);
+          setTotalTokens((evt as unknown as { total_tokens?: number }).total_tokens ?? totalTokens);
+          setPagesCollected((evt as unknown as { pages_collected?: number }).pages_collected ?? pagesCollected);
           break;
 
         case 'qa_reject':
@@ -216,10 +264,15 @@ export default function Monitor() {
         </div>
       ))}
 
-      {/* Empty state */}
-      {agentList.length === 0 && (
+      {/* Planning / Connecting state */}
+      {phase === 'planning' && agentList.length === 0 && (
+        <PipelineSkeleton />
+      )}
+
+      {phase === 'connecting' && (
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-12 text-center text-gray-600 font-mono text-sm">
-          等待 Agent 启动... (WebSocket {connectionStatus === 'connected' ? '已连接' : '等待连接'})
+          <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-2" />
+          正在连接 WebSocket...
         </div>
       )}
 
@@ -250,9 +303,9 @@ export default function Monitor() {
       <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 flex items-center justify-between font-mono text-sm">
         <span className="text-gray-500">资源消耗</span>
         <div className="flex gap-6">
-          <span className="text-gray-600">Token: —</span>
+          <span className="text-gray-400">Token: {totalTokens > 0 ? totalTokens.toLocaleString() : '—'}</span>
           <span className="text-gray-300">成本: ${totalCost.toFixed(4)}</span>
-          <span className="text-gray-600">采集: — 页</span>
+          <span className="text-gray-400">采集: {pagesCollected > 0 ? `${pagesCollected} 页` : '—'}</span>
         </div>
       </div>
     </div>
