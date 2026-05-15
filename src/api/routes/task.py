@@ -52,6 +52,7 @@ def _build_tools(store):
 
 
 async def _plan_and_execute(task_id: str, req: CreateTaskRequest, store, gateway, tools):
+    scheduler = None
     try:
         scheduler = get_scheduler()
         orch = OrchestratorAgent(gateway=gateway, store=store, tool_registry=tools)
@@ -82,7 +83,8 @@ async def _plan_and_execute(task_id: str, req: CreateTaskRequest, store, gateway
         await scheduler.run(dag, executor, gateway=gateway)
 
     except Exception as e:
-        await scheduler.emit_dag_failed(task_id, str(e))
+        if scheduler is not None:
+            await scheduler.emit_dag_failed(task_id, str(e))
 
 
 @router.post("/task", response_model=TaskResponse)
