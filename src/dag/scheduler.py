@@ -36,8 +36,9 @@ class DAGScheduler:
         if self._checkpoint_event:
             self._checkpoint_event.set()
 
-    async def run(self, dag: TaskDAG, executor) -> None:
+    async def run(self, dag: TaskDAG, executor, gateway=None) -> None:
         self._dag_registry[dag.task_id] = dag
+        self._gateway = gateway
 
         # Restore from snapshot: skip COMPLETED nodes
         if self.snapshot_store:
@@ -73,6 +74,9 @@ class DAGScheduler:
                 if not t.done():
                     await t
 
+            # Emit cost update after each batch of nodes completes
+            await self._emit_cost_update(dag.task_id, executor)
+
             # Check if any failed nodes can be retried before declaring terminal
             retriable = any(
                 n.state == NodeState.FAILED and n.retries < n.max_retries
@@ -80,6 +84,38 @@ class DAGScheduler:
             )
             if dag.is_terminal() and not retriable:
                 break
+
+    async def _emit_cost_update(self, task_id: str, executor) -> None:
+        """Emit cost_update with token count, cost, and pages collected."""
+        try:
+            cost_tracker = executor.gateway.cost_tracker
+            tokens = cost_tracker.total_tokens
+            cost = cost_tracker.total_cost
+            # Count WebPage nodes in the knowledge graph (sync in prod, may be async in tests)
+            result = executor.store.query_nodes(node_type="WebPage")
+            if hasattr(result, '__await__'):
+                result = await result
+            pages = len(result) if result else 0
+            await self._emit("cost_update", task_id, 0.0, cost, tokens, pages)
+        except Exception:
+            pass  # cost tracking is non-critical
+
+    async def emit_dag_created(self, task_id: str, dag) -> None:
+        """Push full DAG structure to all WS clients when DAG generation completes."""
+        self._dag_registry[task_id] = dag
+        nodes_payload = []
+        for node in dag.nodes:
+            nodes_payload.append({
+                "node_id": node.node_id,
+                "agent_type": node.agent_type,
+                "state": node.state if hasattr(node.state, 'value') else str(node.state),
+                "depends_on": node.depends_on,
+            })
+        await self._emit("dag_created", task_id, nodes_payload)
+
+    async def emit_dag_failed(self, task_id: str, error: str) -> None:
+        """Notify WS clients that DAG generation failed."""
+        await self._emit("dag_failed", task_id, error)
 
     async def _run_node(self, node: DAGNode, executor, dag: TaskDAG):
         try:
