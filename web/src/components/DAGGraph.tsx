@@ -118,7 +118,7 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
     return (
       <svg width={width} height={height} className="bg-gray-900/50 rounded-lg border border-gray-800">
         <text x={width / 2} y={height / 2} textAnchor="middle" fill="#6b7280" fontSize={12} fontFamily="monospace">
-          DAG 节点为空 — 请创建分析任务
+          DAG 节点为空 — 等待分析流程规划完成...
         </text>
       </svg>
     );
@@ -142,14 +142,30 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
       {layout.map(ln => {
         const color = STATE_COLORS[ln.node.state] || '#6b7280';
         const short = AGENT_SHORT[ln.node.agent_type] || ln.node.agent_type.slice(0, 6);
+        const isRunning = ln.node.state === 'running';
+        const isCompleted = ln.node.state === 'completed';
         return (
-          <g key={ln.node.node_id}>
+          <g key={ln.node.node_id} className="stagger-item animate-fadeSlideUp">
+            {isCompleted && (
+              <rect
+                x={ln.x - 38} y={ln.y - 12}
+                width={76} height={24} rx={4}
+                fill="none" stroke="#22c55e" strokeWidth={1.5}
+                className="animate-glowGreen"
+              />
+            )}
             <rect
               x={ln.x - 36} y={ln.y - 10}
               width={72} height={20} rx={4}
               fill="#111827" stroke={color} strokeWidth={1}
+              className={isRunning ? 'animate-pulse' : ''}
+              style={{ transition: 'stroke 0.4s ease' }}
             />
-            <circle cx={ln.x - 28} cy={ln.y} r={3} fill={color} />
+            <circle
+              cx={ln.x - 28} cy={ln.y} r={3}
+              fill={color}
+              style={{ transition: 'fill 0.3s ease' }}
+            />
             <text x={ln.x - 20} y={ln.y + 4} fill="#d1d5db" fontSize={9} fontFamily="monospace">
               {short}
             </text>
