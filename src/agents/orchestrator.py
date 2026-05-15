@@ -31,9 +31,9 @@ Available agent types and their dependencies:
 - MarketPositionAnalyzer: depends_on [DataEnricher]
 - CrossReviewAgent: depends_on [FeatureAnalyzer, SentimentAnalyzer, PricingAnalyst, TechStackAnalyzer, MarketPositionAnalyzer]
 - SWOTAnalyzer: depends_on [CrossReviewAgent] (or analysis agents if no cross-review)
-- Writer: depends_on [SWOTAnalyzer]
-- QA_FactCheck: depends_on [Writer]
-- QA_LogicCheck: depends_on [Writer]
+- ReportGenerator: depends_on [SWOTAnalyzer]
+- QA_FactCheck: depends_on [ReportGenerator]
+- QA_LogicCheck: depends_on [ReportGenerator]
 
 Output ONLY valid JSON in this exact structure:
 {
@@ -51,7 +51,10 @@ Rules:
 - Assign priority 0 (normal) or 1 (high)
 - SourceDiscovery is always the first node with no dependencies
 - Collectors should be per-product (one for each target's official website) plus shared ones (G2, ProductHunt, News)
-- Skip dimensions excluded in schema.exclude_dimensions
+- Skip dimensions excluded in schema.exclude_dimensions (analysis agents only)
+- **ReportGenerator, QA_FactCheck, QA_LogicCheck are ALWAYS required** — never skip them, even if exclude_dimensions lists their upstream
+- SWOTAnalyzer is required unless "swot" is in exclude_dimensions
+- The final DAG must always end with: SWOTAnalyzer (or last analysis) → ReportGenerator → QA_FactCheck → QA_LogicCheck
 """
 
     max_steps = 5
@@ -64,6 +67,7 @@ Rules:
         dag_json = await self._generate_dag(targets, schema)
         if dag_json is None:
             return None, []
+        dag_json = self._ensure_mandatory_nodes(dag_json, schema, targets)
         dag = self._json_to_dag(dag_json)
         return dag, []
 
@@ -80,11 +84,46 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
             model_tier=self.model_tier,
             max_tokens=4096,
             temperature=0.1,
+            skip_cache=True,
         )
+        return self._parse_dag_json(resp.content)
+
+    @staticmethod
+    def _parse_dag_json(text: str) -> dict | None:
+        import re
+        content = text.strip()
+
+        # 1) Raw parse (most LLMs return clean JSON for DAG generation)
         try:
-            return json.loads(resp.content)
+            d = json.loads(content)
+            if isinstance(d, dict) and "nodes" in d:
+                return d
         except json.JSONDecodeError:
-            return None
+            pass
+
+        # 2) Strip markdown code fences
+        if content.startswith("```"):
+            content = re.sub(r"^```(?:json)?\s*\n?", "", content)
+            content = re.sub(r"\n?```\s*$", "", content)
+            try:
+                d = json.loads(content)
+                if isinstance(d, dict) and "nodes" in d:
+                    return d
+            except json.JSONDecodeError:
+                pass
+
+        # 3) Fallback: use _extract_json but prefer "nodes" key
+        from src.agents.base import BaseAgent
+        result = BaseAgent._extract_json(text)
+        if isinstance(result, dict) and "nodes" in result:
+            return result
+
+        return None
+
+    # Agent types that MUST exist in every DAG regardless of exclude_dimensions.
+    MANDATORY_AGENTS = ["ReportGenerator", "QA_FactCheck", "QA_LogicCheck"]
+    # The final analysis node that Writer should depend on if SWOT is absent.
+    FALLBACK_WRITER_DEP = "FeatureAnalyzer"
 
     def _json_to_dag(self, dag_json: dict) -> TaskDAG:
         nodes = [
@@ -98,3 +137,88 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
             for n in dag_json.get("nodes", [])
         ]
         return TaskDAG(task_id=dag_json.get("task_id", ""), nodes=nodes)
+
+    def _ensure_mandatory_nodes(self, dag_json: dict, schema: dict,
+                                targets: list[str] | None = None) -> dict:
+        """Post-validate and inject mandatory agents (Writer, QA) if the LLM omitted them."""
+        nodes: list[dict] = dag_json.get("nodes", [])
+        existing_types = {n["agent_type"] for n in nodes}
+        existing_ids = {n["node_id"] for n in nodes}
+        exclude = set(schema.get("exclude_dimensions", []))
+        targets = targets or []
+
+        def _unique_id(base: str) -> str:
+            cand = base
+            i = 1
+            while cand in existing_ids:
+                cand = f"{base}_{i}"
+                i += 1
+            existing_ids.add(cand)
+            return cand
+
+        # SWOTAnalyzer: required unless explicitly excluded
+        if "SWOTAnalyzer" not in existing_types and "swot" not in exclude:
+            swot_deps = [n["node_id"] for n in nodes if n["agent_type"] == "CrossReviewAgent"]
+            if not swot_deps:
+                # No cross-review → depend on last analysis agent
+                analysis_order = ["FeatureAnalyzer", "SentimentAnalyzer",
+                                  "PricingAnalyst", "TechStackAnalyzer",
+                                  "MarketPositionAnalyzer"]
+                for at in reversed(analysis_order):
+                    swot_deps = [n["node_id"] for n in nodes if n["agent_type"] == at]
+                    if swot_deps:
+                        break
+                if not swot_deps:
+                    swot_deps = [n["node_id"] for n in nodes
+                                 if n["agent_type"] == "DataEnricher"]
+            nodes.append({
+                "node_id": _unique_id("swot"),
+                "agent_type": "SWOTAnalyzer",
+                "depends_on": swot_deps,
+                "input_query": {},
+                "priority": 0,
+                "auto_generated": True,
+            })
+            existing_types.add("SWOTAnalyzer")
+
+        # ReportGenerator: always required
+        if "ReportGenerator" not in existing_types:
+            writer_dep = [n["node_id"] for n in nodes
+                          if n["agent_type"] == "SWOTAnalyzer"]
+            if not writer_dep:
+                # SWOT excluded or missing → depend on last available analysis node
+                analysis_order = ["FeatureAnalyzer", "SentimentAnalyzer",
+                                  "PricingAnalyst", "TechStackAnalyzer",
+                                  "MarketPositionAnalyzer", "DataEnricher",
+                                  "Collector"]
+                for at in analysis_order:
+                    writer_dep = [n["node_id"] for n in nodes
+                                  if n["agent_type"] == at]
+                    if writer_dep:
+                        break
+            nodes.append({
+                "node_id": _unique_id("report_generator"),
+                "agent_type": "ReportGenerator",
+                "depends_on": writer_dep,
+                "input_query": {"targets": targets},
+                "priority": 0,
+                "auto_generated": True,
+            })
+            existing_types.add("ReportGenerator")
+
+        # QA agents: always required, depend on ReportGenerator
+        writer_id = next(n["node_id"] for n in nodes if n["agent_type"] == "ReportGenerator")
+        for qa_type in ["QA_FactCheck", "QA_LogicCheck"]:
+            if qa_type not in existing_types:
+                nodes.append({
+                    "node_id": _unique_id(qa_type.lower()),
+                    "agent_type": qa_type,
+                    "depends_on": [writer_id],
+                    "input_query": {},
+                    "priority": 0,
+                    "auto_generated": True,
+                })
+                existing_types.add(qa_type)
+
+        dag_json["nodes"] = nodes
+        return dag_json

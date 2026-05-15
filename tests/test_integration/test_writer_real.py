@@ -49,7 +49,7 @@ async def test_writer_generates_report_with_real_llm(real_gateway, seeded_store,
     )
     task = {
         "task_id": "int-t1", "node_id": "w1",
-        "agent_type": "Writer",
+        "agent_type": "ReportGenerator",
         "input_query": {"products": ["Notion", "Confluence"]},
         "context": {},
     }
@@ -57,7 +57,7 @@ async def test_writer_generates_report_with_real_llm(real_gateway, seeded_store,
     output, traces = await agent.execute(task)
 
     assert output.status == "completed", f"Writer failed with: {output.summary}"
-    assert output.agent_type == "Writer"
+    assert output.agent_type == WriterAgent.agent_type
 
     # Verify the report has real content
     report = output.data.get("report_markdown", "") if output.data else ""
@@ -90,7 +90,7 @@ async def test_writer_json_parse_recovery(real_gateway, seeded_store, real_tools
     )
     task = {
         "task_id": "int-t2", "node_id": "w2",
-        "agent_type": "Writer",
+        "agent_type": "ReportGenerator",
         "input_query": {"products": ["Notion"]},
         "context": {},
     }

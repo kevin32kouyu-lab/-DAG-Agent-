@@ -63,7 +63,18 @@ async def _plan_and_execute(task_id: str, req: CreateTaskRequest, store, gateway
         })
 
         if dag is None:
-            await scheduler.emit_dag_failed(task_id, "LLM failed to generate DAG — please retry")
+            error_msg = "Orchestrator LLM 未能生成 DAG，请重试。提示：确认 API 密钥有效、产品名称正确。"
+            await scheduler.emit_dag_failed(task_id, error_msg)
+            return
+
+        # Validate DAG has mandatory nodes (belt-and-suspenders — orchestrator
+        # already does this, but we double-check here as a safety net).
+        agent_types = {n.agent_type for n in dag.nodes}
+        missing_mandatory = [a for a in OrchestratorAgent.MANDATORY_AGENTS
+                            if a not in agent_types]
+        if missing_mandatory:
+            error_msg = f"DAG 缺少强制 Agent: {', '.join(missing_mandatory)}。Orchestrator 后验证失败。"
+            await scheduler.emit_dag_failed(task_id, error_msg)
             return
 
         for node in dag.nodes:
@@ -83,8 +94,10 @@ async def _plan_and_execute(task_id: str, req: CreateTaskRequest, store, gateway
         await scheduler.run(dag, executor, gateway=gateway)
 
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Pipeline failed for {task_id}: {e}", exc_info=True)
         if scheduler is not None:
-            await scheduler.emit_dag_failed(task_id, str(e))
+            await scheduler.emit_dag_failed(task_id, f"Pipeline 执行异常: {e}")
 
 
 @router.post("/task", response_model=TaskResponse)
@@ -111,7 +124,7 @@ async def get_task(task_id: str):
         error = scheduler.get_task_error(task_id)
         if error is not None:
             return {"task_id": task_id, "status": "failed", "error": error}
-        return {"task_id": task_id, "status": "planning"}
+        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
     states = {n.state for n in dag.nodes}
     if all(s in {NodeState.COMPLETED, NodeState.DEGRADED} for s in states):
         status = "completed"

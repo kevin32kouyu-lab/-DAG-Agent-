@@ -51,7 +51,7 @@ export default function AgentCard({ agent, variant = 'compact' }: AgentCardProps
   };
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-700 transition-colors">
+    <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-700 transition-all active:scale-[0.98] animate-slideUp stagger-item">
       {/* header */}
       <div className="flex items-center gap-2 mb-1">
         <StatusDot state={agent.state} />

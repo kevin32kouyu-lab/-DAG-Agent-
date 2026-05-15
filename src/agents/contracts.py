@@ -48,6 +48,6 @@ class SWOTOutput(AgentOutput):
 
 
 class ReportOutput(AgentOutput):
-    agent_type: str = "Writer"
+    agent_type: str = "ReportGenerator"
     report_markdown: str = ""
     sections: list[dict] = Field(default_factory=list)

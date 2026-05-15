@@ -70,14 +70,18 @@ class LLMGateway:
         max_tokens: int = 4096,
         temperature: float = 0.3,
         response_format: dict[str, str] | None = None,
+        skip_cache: bool = False,
     ) -> LLMResponse:
         resolved = model or self.resolve_model(model_tier)
 
-        # Check semantic cache (prompt = last user message)
-        prompt = messages[-1]["content"] if messages else ""
-        cached = self.cache.get(prompt, system, messages)
-        if cached is not None:
-            return LLMResponse(content=cached, model=resolved, cached=True)
+        # Check semantic cache (prompt = last user message), unless skipped
+        if not skip_cache:
+            prompt = messages[-1]["content"] if messages else ""
+            cached = self.cache.get(prompt, system, messages)
+            if cached is not None:
+                return LLMResponse(content=cached, model=resolved, cached=True)
+        else:
+            prompt = ""
 
         provider = self._get_provider(resolved)
 
@@ -86,8 +90,9 @@ class LLMGateway:
         else:
             resp = await self._chat_anthropic(resolved, system, messages, max_tokens, temperature)
 
-        # Cache the response and track cost
-        self.cache.set(prompt, system, messages, resp.content)
+        # Cache the response and track cost (skip caching when skip_cache=True)
+        if not skip_cache:
+            self.cache.set(prompt, system, messages, resp.content)
         ag = agent_type or model_tier
         self.cost_tracker.record(ag, resp.tokens_in + resp.tokens_out, resp.cost)
         return resp

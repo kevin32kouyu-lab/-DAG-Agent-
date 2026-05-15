@@ -106,6 +106,8 @@ class GraphStore:
                 continue
             visited.add(current)
             for edge in self.get_edges_for_source(current):
+                if edge.edge_type != EdgeType.DERIVED_FROM:
+                    continue
                 result.append(edge)
                 if edge.target_id not in visited:
                     queue.append(edge.target_id)

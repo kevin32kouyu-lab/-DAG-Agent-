@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import ConfidenceBar from '../components/ConfidenceBar';
 import TracePanel from '../components/TracePanel';
 import EmptyState from '../components/EmptyState';
+import Spinner from '../components/Spinner';
 import type { TraceResponse, StepTrace } from '../types';
 
 /* ---- layer coloring ---- */
@@ -124,7 +125,7 @@ export default function TraceExplorer() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-6 space-y-6 animate-pageEnter">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-gray-100">溯源探索器</h1>
@@ -143,8 +144,9 @@ export default function TraceExplorer() {
         <button
           onClick={() => doSearch()}
           disabled={loading}
-          className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 text-white rounded text-sm font-medium transition-colors"
+          className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 text-white rounded text-sm font-medium transition-all active:scale-95 inline-flex items-center gap-1.5"
         >
+          {loading && <Spinner size="sm" />}
           {loading ? '搜索中...' : '搜索'}
         </button>
       </div>
@@ -348,7 +350,7 @@ export default function TraceExplorer() {
               a.download = `trace-${id}-${insightId || 'export'}.json`;
               a.click();
             }}
-            className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-300 font-mono border border-gray-800 rounded hover:border-gray-700 transition-colors"
+            className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-300 font-mono border border-gray-800 rounded hover:border-gray-700 transition-all active:scale-95"
           >
             导出 JSON
           </button>

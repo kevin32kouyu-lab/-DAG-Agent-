@@ -17,7 +17,7 @@ async def test_full_dag_simulation(temp_db_path):
     n_enrich = DAGNode(node_id="enricher", agent_type="DataEnricher", input_query={}, depends_on=["col_notion", "col_g2"])
     n_feat = DAGNode(node_id="feature", agent_type="FeatureAnalyzer", input_query={"product": "Notion"}, depends_on=["enricher"])
     n_swot = DAGNode(node_id="swot", agent_type="SWOTAnalyzer", input_query={}, depends_on=["feature"])
-    n_writer = DAGNode(node_id="writer", agent_type="Writer", input_query={}, depends_on=["swot"])
+    n_writer = DAGNode(node_id="writer", agent_type="ReportGenerator", input_query={}, depends_on=["swot"])
     n_qa = DAGNode(node_id="qa1", agent_type="QA_FactCheck", input_query={}, depends_on=["writer"])
 
     dag = TaskDAG(task_id="full_test", nodes=[n_source, n_col1, n_col2, n_enrich, n_feat, n_swot, n_writer, n_qa])

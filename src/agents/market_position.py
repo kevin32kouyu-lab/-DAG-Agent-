@@ -20,6 +20,10 @@ Determine each product's market position:
 3. Target audience (developer, PM, designer, enterprise)
 
 Output: MarketPositionNode per product with fields: product, positioning, gtm_strategy, target_audience.
+
+CRITICAL: If the knowledge graph has no market data (upstream enricher may have failed),
+infer position from general knowledge of the product and set confidence low (0.1-0.3).
+Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
 """
     max_steps = 10
     output_contract = MarketPositionOutput

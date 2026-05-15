@@ -18,8 +18,7 @@ def test_create_task_accepts_targets():
     assert resp.status_code in (200, 500)
 
 
-def test_get_task_returns_stub():
-    """GET /api/task/{task_id} returns stub until full state tracking is added."""
-    resp = client.get("/api/task/nonexistent")
-    assert resp.status_code == 200
-    assert resp.json()["task_id"] == "nonexistent"
+def test_get_task_returns_404_for_nonexistent():
+    """GET /api/task/{task_id} returns 404 when task doesn't exist."""
+    resp = client.get("/api/task/nonexistent_task_xyz")
+    assert resp.status_code == 404

@@ -15,6 +15,7 @@ interface TaskContextValue {
   setActiveTaskId: (id: string) => void;
   taskHistory: HistoryTask[];
   addToHistory: (task: HistoryTask) => void;
+  updateHistoryTask: (id: string, patch: Partial<HistoryTask>) => void;
   wsConnected: boolean;
   setWsConnected: (connected: boolean) => void;
 }
@@ -24,6 +25,7 @@ const TaskContext = createContext<TaskContextValue>({
   setActiveTaskId: () => {},
   taskHistory: [],
   addToHistory: () => {},
+  updateHistoryTask: () => {},
   wsConnected: false,
   setWsConnected: () => {},
 });
@@ -41,8 +43,17 @@ export function TaskContextProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateHistoryTask = useCallback((id: string, patch: Partial<HistoryTask>) => {
+    setTaskHistory(prev => {
+      const next = prev.map(h => h.id === id ? { ...h, ...patch } : h);
+      try { localStorage.setItem('compagent_history', JSON.stringify(next)); } catch { /* ignore */ }
+      window.dispatchEvent(new CustomEvent('historyUpdated', { detail: next }));
+      return next;
+    });
+  }, []);
+
   return (
-    <TaskContext.Provider value={{ activeTaskId, setActiveTaskId, taskHistory, addToHistory, wsConnected, setWsConnected }}>
+    <TaskContext.Provider value={{ activeTaskId, setActiveTaskId, taskHistory, addToHistory, updateHistoryTask, wsConnected, setWsConnected }}>
       {children}
     </TaskContext.Provider>
   );

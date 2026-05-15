@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { TaskContextProvider, useTaskContext } from './context/TaskContext';
+import { ToastProvider } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import TaskPanel from './pages/TaskPanel';
 import Monitor from './pages/Monitor';
@@ -14,7 +15,7 @@ function NavBar() {
   const tid = activeTaskId || 'demo-task';
 
   const linkClass = (path: string) =>
-    `text-sm transition-colors ${
+    `text-sm transition-colors active:scale-95 inline-block ${
       location.pathname === path || location.pathname.startsWith(path + '/')
         ? 'text-white'
         : 'text-gray-400 hover:text-white'
@@ -73,12 +74,14 @@ export default function App() {
   return (
     <BrowserRouter>
       <TaskContextProvider>
-        <div className="min-h-screen bg-gray-950 text-gray-100">
-          <NavBar />
-          <ErrorBoundary>
-            <AppRoutes />
-          </ErrorBoundary>
-        </div>
+        <ToastProvider>
+          <div className="min-h-screen bg-gray-950 text-gray-100">
+            <NavBar />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
+          </div>
+        </ToastProvider>
       </TaskContextProvider>
     </BrowserRouter>
   );

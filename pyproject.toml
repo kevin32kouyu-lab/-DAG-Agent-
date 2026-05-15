@@ -27,5 +27,7 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "integration: tests that call real LLM APIs (requires API keys in .env)",
+    "integration: tests that use replay fixtures (fast, no real LLM)",
+    "smoke: end-to-end tests with real LLM APIs (slow, run on PR/merge)",
+    "real_llm: tests that call real LLM APIs (requires API keys in .env)",
 ]

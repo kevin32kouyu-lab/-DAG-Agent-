@@ -15,11 +15,28 @@ async def trace_insight(task_id: str, insight_id: str, include_steps: bool = Que
     contradictions = find_contradictions(store, insight_id)
     breakdown = get_confidence_breakdown(store, insight_id)
 
+    # Filter chain to only include nodes belonging to this task
+    filtered_chain = []
+    for entry in chain:
+        node_meta = entry["node"].get("metadata", {}) if isinstance(entry["node"], dict) else {}
+        if isinstance(node_meta, str):
+            import json
+            try:
+                node_meta = json.loads(node_meta)
+            except (json.JSONDecodeError, TypeError):
+                node_meta = {}
+        node_task_id = node_meta.get("task_id", "")
+        if not node_task_id or node_task_id == task_id:
+            filtered_chain.append(entry)
+        # Also include the insight node itself
+        elif entry["node"].get("id", "") == insight_id:
+            filtered_chain.append(entry)
+
     result = {
         "insight": insight_id,
         "task_id": task_id,
         "confidence": getattr(node, "confidence", None),
-        "chain": chain,
+        "chain": filtered_chain,
         "contradicting_evidence": contradictions,
         "confidence_breakdown": breakdown,
     }

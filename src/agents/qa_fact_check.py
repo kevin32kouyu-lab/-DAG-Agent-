@@ -5,7 +5,7 @@ from src.agents.registry import agent_registry
 
 @agent_registry.register(
     agent_type="QA_FactCheck",
-    depends_on=["Writer"],
+    depends_on=["ReportGenerator"],
     tools=["graph_query", "graph_write"],
     output_contract=AgentOutput,
     model_tier="reasoning",

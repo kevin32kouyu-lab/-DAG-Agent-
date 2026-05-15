@@ -21,6 +21,10 @@ Analyze pricing models from PricingData nodes:
 4. Build competitive comparison: who offers more for less?
 
 Output: PricingModelNode per product. Include comparisons in the comparison field.
+
+CRITICAL: If the knowledge graph has no pricing data (upstream enricher may have failed),
+create a partial PricingModelNode from general knowledge and set confidence low (0.1-0.3).
+Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
 """
     max_steps = 10
     output_contract = PricingOutput

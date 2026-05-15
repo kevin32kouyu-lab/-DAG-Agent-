@@ -111,11 +111,11 @@ async def test_writer_generates_report(swot_store, synth_tools):
     )
     task = {
         "task_id": "t1", "node_id": "w1",
-        "agent_type": "Writer",
+        "agent_type": "ReportGenerator",
         "input_query": {},
         "context": {},
     }
 
     output, traces = await agent.execute(task)
     assert output.status == "completed"
-    assert output.agent_type == "Writer"
+    assert output.agent_type == WriterAgent.agent_type

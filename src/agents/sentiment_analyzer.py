@@ -21,6 +21,10 @@ Analyze user reviews and social mentions from the knowledge graph:
 4. Extract key verbatim quotes
 
 Output: SentimentNode per topic per product. derived_from links to ReviewEntry nodes.
+
+CRITICAL: If the knowledge graph has no review data (upstream enricher may have failed),
+create a partial SentimentNode with what IS available and set confidence low (0.1-0.3).
+Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
 """
     max_steps = 10
     output_contract = SentimentOutput

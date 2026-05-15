@@ -38,11 +38,12 @@ class BaseAgent(ABC):
     allowed_tools: list[str] = []
 
     def __init__(self, gateway: LLMGateway, store: GraphStore, tool_registry: ToolRegistry,
-                 audit_logger=None, **kwargs):
+                 audit_logger=None, degradation_handler=None, **kwargs):
         self.gateway = gateway
         self.store = store
         self.tool_registry = tool_registry
         self.audit_logger = audit_logger
+        self.degradation_handler = degradation_handler
         self.context = AgentContext()
 
     async def execute(self, task: dict[str, Any]) -> Any:
@@ -120,13 +121,13 @@ class BaseAgent(ABC):
     def _extract_json(text: str) -> dict[str, Any]:
         import json
         import re
-        candidates: list[dict] = []
+        candidates: list[tuple[int, dict]] = []
 
-        # 1) Raw parse
+        # 1) Raw parse (position 0 = earliest possible)
         try:
             d = json.loads(text)
             if isinstance(d, dict):
-                candidates.append(d)
+                candidates.append((0, d))
         except json.JSONDecodeError:
             pass
 
@@ -135,7 +136,7 @@ class BaseAgent(ABC):
             try:
                 d = json.loads(match.group(1))
                 if isinstance(d, dict):
-                    candidates.append(d)
+                    candidates.append((match.start(), d))
             except json.JSONDecodeError:
                 pass
 
@@ -152,16 +153,19 @@ class BaseAgent(ABC):
                         try:
                             d = json.loads(text[start:i + 1])
                             if isinstance(d, dict):
-                                candidates.append(d)
+                                candidates.append((start, d))
                         except json.JSONDecodeError:
                             pass
                         break
 
-        # Prefer candidates with "action" field, then largest
         if candidates:
-            with_action = [c for c in candidates if "action" in c]
-            chosen = with_action[0] if with_action else max(candidates, key=lambda c: len(c))
-            return chosen
+            # Prefer candidates with "action" field (agent tool calls)
+            with_action = [(pos, d) for pos, d in candidates if "action" in d]
+            if with_action:
+                return with_action[0][1]
+            # Otherwise prefer the outermost (earliest position in text)
+            candidates.sort(key=lambda c: c[0])
+            return candidates[0][1]
         return {}
 
     async def _think(self, observation: dict[str, Any]) -> dict[str, Any]:

@@ -14,16 +14,21 @@ interface TraceSidebarProps {
 export default function TraceSidebar({ isOpen, onClose, insightId, taskId, sectionTitle }: TraceSidebarProps) {
   const [data, setData] = useState<TraceResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState('');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!isOpen || !insightId) return;
     setLoading(true);
+    setFetchError('');
     fetch(`/api/trace/${taskId}/${insightId}`)
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => { if (d) setData(d); })
-      .catch(() => {})
+      .catch((err: Error) => { setFetchError(err.message || '网络请求失败'); })
       .finally(() => setLoading(false));
   }, [isOpen, insightId, taskId]);
 
@@ -59,8 +64,11 @@ export default function TraceSidebar({ isOpen, onClose, insightId, taskId, secti
             <div className="text-gray-600 font-mono text-sm text-center py-8">加载溯源数据...</div>
           )}
 
-          {!loading && !data && (
-            <div className="text-gray-600 font-mono text-sm text-center py-8">无法加载溯源数据</div>
+          {!loading && !data && !fetchError && (
+            <div className="text-gray-600 font-mono text-sm text-center py-8">无溯源数据</div>
+          )}
+          {!loading && fetchError && (
+            <div className="text-red-400 font-mono text-sm text-center py-8">加载失败: {fetchError}</div>
           )}
 
           {data && (

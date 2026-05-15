@@ -71,7 +71,7 @@ async def test_full_analysis_pipeline(temp_db_path):
         "SWOTAnalyzer": SWOTAnalyzer(
             gateway=gateway, store=store, tool_registry=tools,
         ),
-        "Writer": WriterAgent(
+        "ReportGenerator": WriterAgent(
             gateway=gateway, store=store, tool_registry=tools,
         ),
     }
@@ -113,9 +113,9 @@ async def test_full_analysis_pipeline(temp_db_path):
     assert swot_output.status == "completed"
 
     # Phase 4: Writer report
-    writer_output, writer_traces = await agents["Writer"].execute({
+    writer_output, writer_traces = await agents["ReportGenerator"].execute({
         "task_id": "t1", "node_id": "w1",
-        "agent_type": "Writer",
+        "agent_type": "ReportGenerator",
         "input_query": {},
         "context": {},
     })
@@ -124,4 +124,4 @@ async def test_full_analysis_pipeline(temp_db_path):
     # Verify all agents completed successfully
     assert cr_output.agent_type == "CrossReviewAgent"
     assert swot_output.agent_type == "SWOTAnalyzer"
-    assert writer_output.agent_type == "Writer"
+    assert writer_output.agent_type == WriterAgent.agent_type

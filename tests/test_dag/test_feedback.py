@@ -10,7 +10,7 @@ def build_test_dag():
     n_feat = DAGNode(node_id="feat", agent_type="FeatureAnalyzer", input_query={}, depends_on=["col"])
     n_sent = DAGNode(node_id="sent", agent_type="SentimentAnalyzer", input_query={}, depends_on=["col"])
     n_swot = DAGNode(node_id="swot", agent_type="SWOTAnalyzer", input_query={}, depends_on=["feat", "sent"])
-    n_writer = DAGNode(node_id="writer", agent_type="Writer", input_query={}, depends_on=["swot"])
+    n_writer = DAGNode(node_id="writer", agent_type="ReportGenerator", input_query={}, depends_on=["swot"])
     n_qa = DAGNode(node_id="qa1", agent_type="QA_FactCheck", input_query={}, depends_on=["writer"])
     for n in [n_sd, n_col, n_feat, n_sent, n_swot, n_writer]:
         n.state = NodeState.COMPLETED

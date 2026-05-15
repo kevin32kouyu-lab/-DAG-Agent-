@@ -34,6 +34,7 @@ class NodeSnapshot:
     node_id: str
     state: NodeState
     kg_changeset: dict[str, Any] = field(default_factory=dict)
+    agent_log: list[dict[str, Any]] = field(default_factory=list)
     checkpoint_time: datetime = field(default_factory=datetime.now)
     llm_cost: float = 0.0
 

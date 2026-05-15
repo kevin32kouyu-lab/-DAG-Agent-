@@ -19,7 +19,7 @@ _AGENT_IMPORT_MAP: dict[str, tuple[str, str]] = {
     "MarketPositionAnalyzer": ("src.agents.market_position", "MarketPositionAnalyzer"),
     "CrossReviewAgent":   ("src.agents.cross_review",       "CrossReviewAgent"),
     "SWOTAnalyzer":       ("src.agents.swot_synthesizer",   "SWOTAnalyzer"),
-    "Writer":             ("src.agents.writer",             "WriterAgent"),
+    "ReportGenerator":    ("src.agents.writer",             "WriterAgent"),
     "QA_FactCheck":       ("src.agents.qa_fact_check",      "QAFactCheckAgent"),
     "QA_LogicCheck":      ("src.agents.qa_logic_check",     "QALogicCheckAgent"),
 }

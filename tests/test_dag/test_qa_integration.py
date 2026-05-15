@@ -11,7 +11,7 @@ def build_qa_dag():
     n_sd = DAGNode(node_id="sd", agent_type="SourceDiscovery", input_query={}, depends_on=[])
     n_col = DAGNode(node_id="col", agent_type="Collector", input_query={}, depends_on=["sd"])
     n_feat = DAGNode(node_id="feat", agent_type="FeatureAnalyzer", input_query={}, depends_on=["col"])
-    n_writer = DAGNode(node_id="writer", agent_type="Writer", input_query={}, depends_on=["feat"])
+    n_writer = DAGNode(node_id="writer", agent_type="ReportGenerator", input_query={}, depends_on=["feat"])
     n_qa_fact = DAGNode(node_id="qa_fact", agent_type="QA_FactCheck", input_query={}, depends_on=["writer"])
     n_qa_logic = DAGNode(node_id="qa_logic", agent_type="QA_LogicCheck", input_query={}, depends_on=["writer"])
     return TaskDAG(task_id="qa_integration_test", nodes=[
@@ -186,7 +186,7 @@ async def test_independent_branch_not_affected():
     n_col = DAGNode(node_id="col", agent_type="Collector", input_query={}, depends_on=["sd"])
     n_feat = DAGNode(node_id="feat", agent_type="FeatureAnalyzer", input_query={}, depends_on=["col"])
     n_sent = DAGNode(node_id="sent", agent_type="SentimentAnalyzer", input_query={}, depends_on=["col"])
-    n_writer = DAGNode(node_id="writer", agent_type="Writer", input_query={}, depends_on=["feat", "sent"])
+    n_writer = DAGNode(node_id="writer", agent_type="ReportGenerator", input_query={}, depends_on=["feat", "sent"])
     n_qa = DAGNode(node_id="qa1", agent_type="QA_FactCheck", input_query={}, depends_on=["writer"])
     dag = TaskDAG(task_id="independent_test", nodes=[n_sd, n_col, n_feat, n_sent, n_writer, n_qa])
 

@@ -21,6 +21,10 @@ open-source repos, HTTP headers):
 3. Assign confidence to each inference
 
 Output: TechStackNode per product with fields: product, languages[], frameworks[], infra[], confidence.
+
+CRITICAL: If the knowledge graph has no tech data (upstream enricher may have failed),
+infer from general knowledge of the product and set confidence low (0.1-0.3).
+Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
 """
     max_steps = 10
     output_contract = TechStackOutput

@@ -5,6 +5,8 @@ type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 const MAX_RECONNECT_DELAY = 30_000;
 const BASE_DELAY = 1_000;
 
+const MAX_EVENTS = 500;
+
 export function useWebSocket(taskId: string) {
   const [events, setEvents] = useState<unknown[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
@@ -30,13 +32,18 @@ export function useWebSocket(taskId: string) {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        setEvents((prev) => [...prev, data]);
+        setEvents((prev) => {
+          const next = [...prev, data];
+          return next.length > MAX_EVENTS ? next.slice(-MAX_EVENTS) : next;
+        });
       } catch { /* ignore malformed messages */ }
     };
 
     ws.onclose = () => {
       setConnectionStatus('disconnected');
-      const delay = Math.min(MAX_RECONNECT_DELAY, BASE_DELAY * Math.pow(2, reconnectAttempt.current));
+      const base = Math.min(MAX_RECONNECT_DELAY, BASE_DELAY * Math.pow(2, reconnectAttempt.current));
+      const jitter = Math.random() * 0.3 * base;
+      const delay = base + jitter;
       reconnectAttempt.current += 1;
       reconnectTimer.current = setTimeout(connect, delay);
     };

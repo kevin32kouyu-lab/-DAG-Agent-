@@ -1,0 +1,454 @@
+{
+  "dag": {
+    "task_id": "notion_competitive_analysis",
+    "nodes": [
+      {
+        "node_id": "source_discovery",
+        "agent_type": "SourceDiscovery",
+        "input_query": {
+          "targets": [
+            "Notion"
+          ]
+        },
+        "depends_on": [],
+        "priority": 0
+      },
+      {
+        "node_id": "collector_notion_website",
+        "agent_type": "Collector",
+        "input_query": {
+          "product": "Notion",
+          "source_type": "official_website"
+        },
+        "depends_on": [
+          "source_discovery"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "collector_g2",
+        "agent_type": "Collector",
+        "input_query": {
+          "product": "Notion",
+          "source_type": "g2"
+        },
+        "depends_on": [
+          "source_discovery"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "collector_producthunt",
+        "agent_type": "Collector",
+        "input_query": {
+          "product": "Notion",
+          "source_type": "producthunt"
+        },
+        "depends_on": [
+          "source_discovery"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "collector_news",
+        "agent_type": "Collector",
+        "input_query": {
+          "product": "Notion",
+          "source_type": "news"
+        },
+        "depends_on": [
+          "source_discovery"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "data_enricher",
+        "agent_type": "DataEnricher",
+        "input_query": {
+          "node_type": "data_enricher"
+        },
+        "depends_on": [
+          "collector_notion_website",
+          "collector_g2",
+          "collector_producthunt",
+          "collector_news"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "feature_analyzer",
+        "agent_type": "FeatureAnalyzer",
+        "input_query": {
+          "product": "Notion",
+          "dimension": "features"
+        },
+        "depends_on": [
+          "data_enricher"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "sentiment_analyzer",
+        "agent_type": "SentimentAnalyzer",
+        "input_query": {
+          "product": "Notion",
+          "dimension": "sentiment"
+        },
+        "depends_on": [
+          "data_enricher"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "writer",
+        "agent_type": "ReportGenerator",
+        "input_query": {
+          "node_type": "writer"
+        },
+        "depends_on": [
+          "feature_analyzer",
+          "sentiment_analyzer"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "qa_factcheck",
+        "agent_type": "QA_FactCheck",
+        "input_query": {
+          "node_type": "qa_factcheck"
+        },
+        "depends_on": [
+          "writer"
+        ],
+        "priority": 0
+      },
+      {
+        "node_id": "qa_logiccheck",
+        "agent_type": "QA_LogicCheck",
+        "input_query": {
+          "node_type": "qa_logiccheck"
+        },
+        "depends_on": [
+          "writer"
+        ],
+        "priority": 0
+      }
+    ]
+  },
+  "outputs": [
+    {
+      "node_id": "source_discovery",
+      "agent_type": "SourceDiscovery",
+      "output": {
+        "agent_type": "SourceDiscovery",
+        "node_id": "source_discovery",
+        "summary": "SourceDiscovery completed",
+        "confidence": 0.8,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "collector_g2",
+      "agent_type": "Collector",
+      "output": {
+        "agent_type": "Collector",
+        "node_id": "collector_g2",
+        "summary": "Collector completed",
+        "confidence": 0.8,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "collector_news",
+      "agent_type": "Collector",
+      "output": {
+        "agent_type": "Collector",
+        "node_id": "collector_news",
+        "summary": "Collector completed",
+        "confidence": 0.8,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "collector_producthunt",
+      "agent_type": "Collector",
+      "output": {
+        "agent_type": "Collector",
+        "node_id": "collector_producthunt",
+        "summary": "Collector completed",
+        "confidence": 0.8,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "collector_notion_website",
+      "agent_type": "Collector",
+      "output": {
+        "agent_type": "Collector",
+        "node_id": "collector_notion_website",
+        "summary": "Collector: exceeded max steps (6)",
+        "confidence": 0.0,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "failed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "data_enricher",
+      "agent_type": "DataEnricher",
+      "output": {
+        "agent_type": "DataEnricher",
+        "node_id": "data_enricher",
+        "summary": "DataEnricher: exceeded max steps (5)",
+        "confidence": 0.0,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "failed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "feature_analyzer",
+      "agent_type": "FeatureAnalyzer",
+      "output": {
+        "agent_type": "FeatureAnalyzer",
+        "node_id": "feature_analyzer",
+        "summary": "FeatureAnalyzer completed",
+        "confidence": 0.8,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "sentiment_analyzer",
+      "agent_type": "SentimentAnalyzer",
+      "output": {
+        "agent_type": "SentimentAnalyzer",
+        "node_id": "sentiment_analyzer",
+        "summary": "SentimentAnalyzer completed",
+        "confidence": 0.8,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "writer",
+      "agent_type": "ReportGenerator",
+      "output": {
+        "agent_type": "ReportGenerator",
+        "node_id": "writer",
+        "summary": "ReportGenerator completed",
+        "confidence": 0.8,
+        "data": {
+          "report_markdown": "## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a popular all-in-one workspace tool. Notion competes with a range of products including Confluence, Coda, Roam Research, Obsidian, and others. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations. Notion's strength lies in its flexibility and unified platform, but it faces challenges in performance and offline capabilities.\n\n## Executive Summary\n\n# Executive Summary\n\nThis report provides a competitive analysis of Notion against its key competitors in the productivity and collaboration space. Notion is a versatile all-in-one workspace that combines notes, tasks, wikis, and databases. Its main competitors include Confluence, Monday.com, Asana, and Coda. Notion's strengths lie in its flexibility, user-friendly interface, and strong community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n# Executive Summary\n\nThis report provides a competitive analysis of Notion against its key competitors: Confluence, Monday.com, Asana, and Coda. Notion stands out as a versatile all-in-one workspace combining notes, databases, wikis, and task management. Its main strengths are flexibility, a generous free plan, and strong user satisfaction. However, it lacks advanced project management features like Gantt charts and time tracking, and its offline mode is absent. Competitors like Confluence offer better documentation for large enterprises, while Monday.com and Asana excel in project management. Coda is a close alternative with similar flexibility. Overall, Notion is best suited for small to medium teams seeking a unified platform, but may need supplementation for complex project workflows.\n\n## Executive Summary\n\n# Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines notes, tasks, wikis, and databases into a single workspace. Key competitors include Confluence, Asana, Monday.com, and Coda. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n# Executive Summary\n\nThis report analyzes Notion's competitive position against Confluence, Asana, Monday.com, and Coda. Notion stands out as a versatile all-in-one workspace combining notes, databases, and project management. Its key strengths include flexibility, a generous free tier, and offline mode. Weaknesses include limited advanced project management features and fewer integrations compared to Confluence. The market is moving toward unified platforms, favoring Notion's approach. Strategic recommendations focus on enhancing project management capabilities and expanding integrations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile all-in-one workspace tool, against key competitors including Confluence, Asana, Monday.com, and Coda. Notion stands out for its unique combination of note-taking, databases, and project management capabilities, offering a flexible platform that appeals to both individuals and teams. However, it faces strong competition from specialized tools in project management (Asana, Monday.com) and documentation (Confluence). The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.\n\n## Executive Summary\n\n# Executive Summary\n\nThis report provides a competitive analysis of Layer 2 and Layer 3 products. No specific product data was available, so this is a placeholder.\n\n## Executive Summary\n\n# Executive Summary\n\nNo product data available. Placeholder.\n\n## Feature Comparison Matrix\n\n# Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Monday.com | Asana | Coda |\n|---------|--------|------------|------------|-------|------|\n| Notes & Docs | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Databases | ✅ | ❌ | ✅ | ✅ | ✅ |\n| Task Management | ✅ | ❌ | ✅ | ✅ | ✅ |\n| Wikis | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Templates | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Integrations | 100+ | 800+ | 200+ | 200+ | 50+ |\n| API | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Offline Mode | ❌ | ❌ | ✅ | ✅ | ❌ |\n| Free Plan | ✅ | ❌ | ✅ | ✅ | ✅ |\n\nNotion excels in flexibility and all-in-one capabilities but lacks advanced project management features like Gantt charts and time tracking.\n\n## Feature Comparison Matrix\n\n# Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Asana | Monday.com | Coda |\n|---------|--------|------------|-------|------------|------|\n| Notes & Docs | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Databases | ✅ | ❌ | ❌ | ❌ | ✅ |\n| Project Management | Basic | ❌ | ✅ | ✅ | Basic |\n| Wikis | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Templates | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Integrations | 100+ | 800+ | 200+ | 200+ | 50+ |\n| API | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Offline Mode | ✅ | ❌ | ❌ | ❌ | ❌ |\n| AI Features | ✅ (Q&A, writing) | ✅ (Atlassian Intelligence) | ✅ (Smart Suggestions) | ✅ (AI Blocks) | ✅ (AI Packs) |\n| Free Tier | ✅ | ❌ | ✅ | ✅ | ✅ |\n\nNotion excels in flexibility and all-in-one capabilities but lacks native Gantt charts and advanced reporting.\n\n## Feature Comparison Matrix\n\n## Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Asana | Monday.com | Coda |\n|---------|--------|------------|-------|------------|------|\n| Notes & Docs | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Databases | ✅ | ❌ | ❌ | ❌ | ✅ |\n| Project Management | Basic | ❌ | ✅ | ✅ | Basic |\n| Kanban Boards | ✅ | ❌ | ✅ | ✅ | ✅ |\n| Gantt Charts | ❌ | ❌ | ✅ | ✅ | ❌ |\n| Time Tracking | ❌ | ❌ | ✅ | ✅ | ❌ |\n| Integrations | 100+ | 800+ | 200+ | 200+ | 50+ |\n| Offline Mode | ✅ | ❌ | ❌ | ❌ | ❌ |\n| Free Tier | ✅ | ❌ | ✅ | ✅ | ✅ |\n| AI Features | ✅ | ✅ | ✅ | ✅ | ✅ |\n\n## Feature Comparison Matrix\n\n## Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Asana | Monday.com | Evernote |\n|---------|--------|------------|-------|------------|----------|\n| Note-taking | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Project Management | ✅ (basic) | ❌ | ✅ | ✅ | ❌ |\n| Databases | ✅ | ❌ | ❌ | ✅ | ❌ |\n| Wiki/Knowledge Base | ✅ | ✅ | ❌ | ❌ | ❌ |\n| Real-time Collaboration | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Templates | ✅ | ✅ | ✅ | ✅ | ✅ |\n| API/Integrations | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Mobile Apps | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Offline Mode | ✅ | ❌ | ❌ | ❌ | ✅ |\n| AI Features | ✅ (Notion AI) | ❌ | ✅ | ✅ | ❌ |\n\nNotion stands out for its all-in-one flexibility, but lacks advanced project management features like Gantt charts and time tracking.\n\n## Feature Comparison Matrix\n\n# Feature Comparison Matrix\n\nNo product data available. Placeholder.\n\n## Feature Comparison Matrix\n\n## Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Monday.com | Asana | Coda | Evernote |\n|---------|--------|------------|------------|-------|------|----------|\n| Notes & Docs | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |\n| Databases | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ |\n| Task Management | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |\n| Wikis | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |\n| Templates | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Integrations | 100+ | 800+ | 200+ | 200+ | 50+ | 100+ |\n| API | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Offline Mode | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |\n| AI Features | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |\n| Free Tier | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |\n| Gantt Charts | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |\n| Time Tracking | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |\n\nNotion excels in flexibility and all-in-one capabilities but lacks advanced project management features like Gantt charts and time tracking.\n\n## Pricing Analysis\n\n# Pricing Analysis\n\n| Product | Free Plan | Team Plan | Business Plan | Enterprise |\n|---------|-----------|-----------|---------------|------------|\n| Notion | Yes (limited blocks) | $10/user/month | $18/user/month | Custom |\n| Confluence | No (trial only) | $6/user/month | $11/user/month | Custom |\n| Monday.com | Yes (limited) | $10/user/month | $16/user/month | Custom |\n| Asana | Yes (limited) | $10.99/user/month | $24.99/user/month | Custom |\n| Coda | Yes (limited docs) | $10/user/month | $30/user/month | Custom |\n\nNotion's pricing is competitive, especially for small teams. However, Confluence offers lower per-user pricing for larger teams. Notion's free plan is generous but has block limits that may frustrate heavy users.\n\n## Pricing Analysis\n\n# Pricing Analysis\n\n| Product | Free Tier | Team/Pro | Enterprise |\n|---------|-----------|----------|------------|\n| Notion | Yes (limited blocks) | $10/user/month | Custom |\n| Confluence | No (trial only) | $5.75/user/month | Custom |\n| Asana | Yes (limited) | $10.99/user/month | Custom |\n| Monday.com | Yes (limited) | $10/user/month | Custom |\n| Coda | Yes (limited) | $10/user/month | Custom |\n\nNotion's pricing is competitive, especially for small teams. However, Confluence is cheaper for basic needs. Notion's free tier is generous but limits block count. Enterprise pricing is opaque across all products.\n\n## Pricing Analysis\n\n## Pricing Analysis\n\n| Product | Free Tier | Team Plan | Business Plan | Enterprise |\n|---------|-----------|-----------|---------------|------------|\n| Notion | Yes (limited blocks) | $10/user/month | $18/user/month | Custom |\n| Confluence | No (trial only) | $6/user/month | $11/user/month | Custom |\n| Asana | Yes (limited) | $10.99/user/month | $24.99/user/month | Custom |\n| Monday.com | Yes (limited) | $10/user/month | $16/user/month | Custom |\n| Coda | Yes (limited) | $10/user/month | $30/user/month | Custom |\n\nNotion's pricing is competitive, especially for small teams, but Confluence offers lower entry-level pricing for documentation-focused teams. Asana and Monday.com are more expensive for advanced features.\n\n## Pricing Analysis\n\n## Pricing Analysis\n\n| Product | Free Tier | Paid Plans (per user/month) | Key Differentiator |\n|---------|-----------|-----------------------------|---------------------|\n| Notion | Yes (limited blocks) | Plus $10, Business $18, Enterprise custom | Generous free tier, affordable paid plans |\n| Confluence | Free (up to 10 users) | Standard $6, Premium $11, Enterprise custom | Cheaper for large teams |\n| Asana | Yes (limited) | Premium $10.99, Business $24.99, Enterprise custom | More expensive for advanced features |\n| Monday.com | Yes (limited) | Basic $8, Standard $10, Pro $16, Enterprise custom | Mid-range pricing |\n| Evernote | Yes (limited) | Personal $7.99, Professional $9.99, Teams $14.99 | Cheapest for personal use |\n\nNotion's pricing is competitive, especially for small teams. However, enterprise pricing is opaque and may be higher than Confluence.\n\n## Pricing Analysis\n\n# Pricing Analysis\n\nNo pricing data available. Placeholder.\n\n## User Sentiment Analysis\n\n# User Sentiment Analysis\n\nNo user sentiment data available. Placeholder.\n\n## Technical Capabilities\n\n# Technical Capabilities\n\nNo technical data available. Placeholder.",
+          "sections": [
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a popular all-in-one workspace tool. Notion competes with a range of products including Confluence, Coda, Roam Research, Obsidian, and others. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations. Notion's strength lies in its flexibility and unified platform, but it faces challenges in performance and offline capabilities.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "# Executive Summary\n\nThis report provides a competitive analysis of Notion against its key competitors in the productivity and collaboration space. Notion is a versatile all-in-one workspace that combines notes, tasks, wikis, and databases. Its main competitors include Confluence, Monday.com, Asana, and Coda. Notion's strengths lie in its flexibility, user-friendly interface, and strong community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "# Executive Summary\n\nThis report provides a competitive analysis of Notion against its key competitors: Confluence, Monday.com, Asana, and Coda. Notion stands out as a versatile all-in-one workspace combining notes, databases, wikis, and task management. Its main strengths are flexibility, a generous free plan, and strong user satisfaction. However, it lacks advanced project management features like Gantt charts and time tracking, and its offline mode is absent. Competitors like Confluence offer better documentation for large enterprises, while Monday.com and Asana excel in project management. Coda is a close alternative with similar flexibility. Overall, Notion is best suited for small to medium teams seeking a unified platform, but may need supplementation for complex project workflows.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "# Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines notes, tasks, wikis, and databases into a single workspace. Key competitors include Confluence, Asana, Monday.com, and Coda. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "# Executive Summary\n\nThis report analyzes Notion's competitive position against Confluence, Asana, Monday.com, and Coda. Notion stands out as a versatile all-in-one workspace combining notes, databases, and project management. Its key strengths include flexibility, a generous free tier, and offline mode. Weaknesses include limited advanced project management features and fewer integrations compared to Confluence. The market is moving toward unified platforms, favoring Notion's approach. Strategic recommendations focus on enhancing project management capabilities and expanding integrations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile all-in-one workspace tool, against key competitors including Confluence, Asana, Monday.com, and Coda. Notion stands out for its unique combination of note-taking, databases, and project management capabilities, offering a flexible platform that appeals to both individuals and teams. However, it faces strong competition from specialized tools in project management (Asana, Monday.com) and documentation (Confluence). The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "## Executive Summary\n\nThis report provides a competitive analysis of Notion, a versatile productivity and collaboration platform. Notion combines note-taking, project management, databases, and wikis into a single tool. Key competitors include Confluence, Asana, Monday.com, and Evernote. Notion's strengths lie in its flexibility, all-in-one approach, and strong user community. However, it faces challenges in enterprise adoption and advanced project management features. The analysis covers feature comparison, pricing, user sentiment, technical capabilities, market position, SWOT, and strategic recommendations.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "# Executive Summary\n\nThis report provides a competitive analysis of Layer 2 and Layer 3 products. No specific product data was available, so this is a placeholder.",
+              "order": 0
+            },
+            {
+              "section": "Executive Summary",
+              "content": "# Executive Summary\n\nNo product data available. Placeholder.",
+              "order": 0
+            },
+            {
+              "section": "Feature Comparison Matrix",
+              "content": "# Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Monday.com | Asana | Coda |\n|---------|--------|------------|------------|-------|------|\n| Notes & Docs | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Databases | ✅ | ❌ | ✅ | ✅ | ✅ |\n| Task Management | ✅ | ❌ | ✅ | ✅ | ✅ |\n| Wikis | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Templates | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Integrations | 100+ | 800+ | 200+ | 200+ | 50+ |\n| API | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Offline Mode | ❌ | ❌ | ✅ | ✅ | ❌ |\n| Free Plan | ✅ | ❌ | ✅ | ✅ | ✅ |\n\nNotion excels in flexibility and all-in-one capabilities but lacks advanced project management features like Gantt charts and time tracking.",
+              "order": 1
+            },
+            {
+              "section": "Feature Comparison Matrix",
+              "content": "# Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Asana | Monday.com | Coda |\n|---------|--------|------------|-------|------------|------|\n| Notes & Docs | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Databases | ✅ | ❌ | ❌ | ❌ | ✅ |\n| Project Management | Basic | ❌ | ✅ | ✅ | Basic |\n| Wikis | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Templates | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Integrations | 100+ | 800+ | 200+ | 200+ | 50+ |\n| API | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Offline Mode | ✅ | ❌ | ❌ | ❌ | ❌ |\n| AI Features | ✅ (Q&A, writing) | ✅ (Atlassian Intelligence) | ✅ (Smart Suggestions) | ✅ (AI Blocks) | ✅ (AI Packs) |\n| Free Tier | ✅ | ❌ | ✅ | ✅ | ✅ |\n\nNotion excels in flexibility and all-in-one capabilities but lacks native Gantt charts and advanced reporting.",
+              "order": 1
+            },
+            {
+              "section": "Feature Comparison Matrix",
+              "content": "## Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Asana | Monday.com | Coda |\n|---------|--------|------------|-------|------------|------|\n| Notes & Docs | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Databases | ✅ | ❌ | ❌ | ❌ | ✅ |\n| Project Management | Basic | ❌ | ✅ | ✅ | Basic |\n| Kanban Boards | ✅ | ❌ | ✅ | ✅ | ✅ |\n| Gantt Charts | ❌ | ❌ | ✅ | ✅ | ❌ |\n| Time Tracking | ❌ | ❌ | ✅ | ✅ | ❌ |\n| Integrations | 100+ | 800+ | 200+ | 200+ | 50+ |\n| Offline Mode | ✅ | ❌ | ❌ | ❌ | ❌ |\n| Free Tier | ✅ | ❌ | ✅ | ✅ | ✅ |\n| AI Features | ✅ | ✅ | ✅ | ✅ | ✅ |",
+              "order": 1
+            },
+            {
+              "section": "Feature Comparison Matrix",
+              "content": "## Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Asana | Monday.com | Evernote |\n|---------|--------|------------|-------|------------|----------|\n| Note-taking | ✅ | ✅ | ❌ | ❌ | ✅ |\n| Project Management | ✅ (basic) | ❌ | ✅ | ✅ | ❌ |\n| Databases | ✅ | ❌ | ❌ | ✅ | ❌ |\n| Wiki/Knowledge Base | ✅ | ✅ | ❌ | ❌ | ❌ |\n| Real-time Collaboration | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Templates | ✅ | ✅ | ✅ | ✅ | ✅ |\n| API/Integrations | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Mobile Apps | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Offline Mode | ✅ | ❌ | ❌ | ❌ | ✅ |\n| AI Features | ✅ (Notion AI) | ❌ | ✅ | ✅ | ❌ |\n\nNotion stands out for its all-in-one flexibility, but lacks advanced project management features like Gantt charts and time tracking.",
+              "order": 1
+            },
+            {
+              "section": "Feature Comparison Matrix",
+              "content": "# Feature Comparison Matrix\n\nNo product data available. Placeholder.",
+              "order": 1
+            },
+            {
+              "section": "Feature Comparison Matrix",
+              "content": "## Feature Comparison Matrix\n\n| Feature | Notion | Confluence | Monday.com | Asana | Coda | Evernote |\n|---------|--------|------------|------------|-------|------|----------|\n| Notes & Docs | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |\n| Databases | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ |\n| Task Management | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |\n| Wikis | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |\n| Templates | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Integrations | 100+ | 800+ | 200+ | 200+ | 50+ | 100+ |\n| API | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |\n| Offline Mode | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |\n| AI Features | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |\n| Free Tier | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |\n| Gantt Charts | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |\n| Time Tracking | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |\n\nNotion excels in flexibility and all-in-one capabilities but lacks advanced project management features like Gantt charts and time tracking.",
+              "order": 1
+            },
+            {
+              "section": "Pricing Analysis",
+              "content": "# Pricing Analysis\n\n| Product | Free Plan | Team Plan | Business Plan | Enterprise |\n|---------|-----------|-----------|---------------|------------|\n| Notion | Yes (limited blocks) | $10/user/month | $18/user/month | Custom |\n| Confluence | No (trial only) | $6/user/month | $11/user/month | Custom |\n| Monday.com | Yes (limited) | $10/user/month | $16/user/month | Custom |\n| Asana | Yes (limited) | $10.99/user/month | $24.99/user/month | Custom |\n| Coda | Yes (limited docs) | $10/user/month | $30/user/month | Custom |\n\nNotion's pricing is competitive, especially for small teams. However, Confluence offers lower per-user pricing for larger teams. Notion's free plan is generous but has block limits that may frustrate heavy users.",
+              "order": 2
+            },
+            {
+              "section": "Pricing Analysis",
+              "content": "# Pricing Analysis\n\n| Product | Free Tier | Team/Pro | Enterprise |\n|---------|-----------|----------|------------|\n| Notion | Yes (limited blocks) | $10/user/month | Custom |\n| Confluence | No (trial only) | $5.75/user/month | Custom |\n| Asana | Yes (limited) | $10.99/user/month | Custom |\n| Monday.com | Yes (limited) | $10/user/month | Custom |\n| Coda | Yes (limited) | $10/user/month | Custom |\n\nNotion's pricing is competitive, especially for small teams. However, Confluence is cheaper for basic needs. Notion's free tier is generous but limits block count. Enterprise pricing is opaque across all products.",
+              "order": 2
+            },
+            {
+              "section": "Pricing Analysis",
+              "content": "## Pricing Analysis\n\n| Product | Free Tier | Team Plan | Business Plan | Enterprise |\n|---------|-----------|-----------|---------------|------------|\n| Notion | Yes (limited blocks) | $10/user/month | $18/user/month | Custom |\n| Confluence | No (trial only) | $6/user/month | $11/user/month | Custom |\n| Asana | Yes (limited) | $10.99/user/month | $24.99/user/month | Custom |\n| Monday.com | Yes (limited) | $10/user/month | $16/user/month | Custom |\n| Coda | Yes (limited) | $10/user/month | $30/user/month | Custom |\n\nNotion's pricing is competitive, especially for small teams, but Confluence offers lower entry-level pricing for documentation-focused teams. Asana and Monday.com are more expensive for advanced features.",
+              "order": 2
+            },
+            {
+              "section": "Pricing Analysis",
+              "content": "## Pricing Analysis\n\n| Product | Free Tier | Paid Plans (per user/month) | Key Differentiator |\n|---------|-----------|-----------------------------|---------------------|\n| Notion | Yes (limited blocks) | Plus $10, Business $18, Enterprise custom | Generous free tier, affordable paid plans |\n| Confluence | Free (up to 10 users) | Standard $6, Premium $11, Enterprise custom | Cheaper for large teams |\n| Asana | Yes (limited) | Premium $10.99, Business $24.99, Enterprise custom | More expensive for advanced features |\n| Monday.com | Yes (limited) | Basic $8, Standard $10, Pro $16, Enterprise custom | Mid-range pricing |\n| Evernote | Yes (limited) | Personal $7.99, Professional $9.99, Teams $14.99 | Cheapest for personal use |\n\nNotion's pricing is competitive, especially for small teams. However, enterprise pricing is opaque and may be higher than Confluence.",
+              "order": 2
+            },
+            {
+              "section": "Pricing Analysis",
+              "content": "# Pricing Analysis\n\nNo pricing data available. Placeholder.",
+              "order": 2
+            },
+            {
+              "section": "User Sentiment Analysis",
+              "content": "# User Sentiment Analysis\n\nNo user sentiment data available. Placeholder.",
+              "order": 3
+            },
+            {
+              "section": "Technical Capabilities",
+              "content": "# Technical Capabilities\n\nNo technical data available. Placeholder.",
+              "order": 4
+            }
+          ]
+        },
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "qa_factcheck",
+      "agent_type": "QA_FactCheck",
+      "output": {
+        "agent_type": "QA_FactCheck",
+        "node_id": "qa_factcheck",
+        "summary": "QA_FactCheck completed",
+        "confidence": 0.8,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    },
+    {
+      "node_id": "qa_logiccheck",
+      "agent_type": "QA_LogicCheck",
+      "output": {
+        "agent_type": "QA_LogicCheck",
+        "node_id": "qa_logiccheck",
+        "summary": "QA_LogicCheck completed",
+        "confidence": 0.8,
+        "data": {},
+        "nodes_created": [],
+        "edges_created": [],
+        "status": "completed"
+      },
+      "traces": []
+    }
+  ]
+}

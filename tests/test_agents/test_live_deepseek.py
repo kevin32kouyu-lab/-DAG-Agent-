@@ -1,15 +1,29 @@
 """
 Integration tests using real DeepSeek LLM to verify P1-P3 functionality.
 Run with: python -m pytest tests/test_agents/test_live_deepseek.py -v -s
-Requires: .env with DEEPSEEK_API_KEY set
+Requires: .env with OPENAI_API_KEY_DEEPSEEK_CHAT set
 """
+import os
 import json
 import pytest
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env before checking keys
+_env_path = Path(__file__).parent.parent.parent / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path)
+
+API_KEY_MISSING = not os.getenv("OPENAI_API_KEY_DEEPSEEK_CHAT")
+
+pytestmark = pytest.mark.skipif(API_KEY_MISSING, reason="需要 OPENAI_API_KEY_DEEPSEEK_CHAT 环境变量")
+
 from src.llm_gateway.gateway import LLMGateway
 from src.knowledge_graph.store import GraphStore
 from src.agents.tools.base import ToolRegistry
 from src.agents.tools.graph_tools import GraphQueryTool, GraphWriteTool
 from src.agents.tools.web_tools import WebSearchTool, WebScrapeTool
+from src.agents.tools.company_scope import CompanyScopeTool
 from src.agents.source_discovery import SourceDiscoveryAgent
 from src.agents.collector import CollectorAgent
 from src.agents.data_enricher import DataEnricherAgent
@@ -40,6 +54,7 @@ def live_tools(live_store):
     tools.register(GraphWriteTool, store=live_store)
     tools.register(WebSearchTool)
     tools.register(WebScrapeTool)
+    tools.register(CompanyScopeTool)
     return tools
 
 
