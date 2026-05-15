@@ -139,7 +139,9 @@ export type WSEventType =
   | 'agent_log'
   | 'cost_update'
   | 'qa_reject'
-  | 'dag_state';
+  | 'dag_state'
+  | 'dag_created'
+  | 'dag_failed';
 
 export interface WSBaseEvent {
   event: WSEventType;
@@ -198,6 +200,24 @@ export interface WSDagState extends WSBaseEvent {
   total_cost: number;
 }
 
+export interface WSDagCreated extends WSBaseEvent {
+  event: 'dag_created';
+  nodes: Array<{
+    node_id: string;
+    agent_type: AgentType;
+    state: NodeState;
+    depends_on: string[];
+  }>;
+  total_cost: number;
+  total_tokens: number;
+  pages_collected: number;
+}
+
+export interface WSDagFailed extends WSBaseEvent {
+  event: 'dag_failed';
+  error: string;
+}
+
 export type WSEvent =
   | WSNodeStateChange
   | WSNodeCompleted
@@ -205,7 +225,9 @@ export type WSEvent =
   | WSAgentLog
   | WSCostUpdate
   | WSQAReject
-  | WSDagState;
+  | WSDagState
+  | WSDagCreated
+  | WSDagFailed;
 
 /* History types */
 
@@ -214,7 +236,7 @@ export interface HistoryTask {
   time: string;
   targets: string;
   targetsArr?: string[];
-  status: 'completed' | 'running' | 'failed';
+  status: 'completed' | 'running' | 'failed' | 'planning';
   duration: string;
 }
 
