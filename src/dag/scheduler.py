@@ -18,6 +18,7 @@ class DAGScheduler:
         self._event_callbacks: dict[str, list] = {}
         self._checkpoint_event: asyncio.Event | None = None
         self._dag_registry: dict[str, TaskDAG] = {}
+        self._task_errors: dict[str, str] = {}
         self.review_mode = review_mode
         self.feedback = feedback_handler or FeedbackHandler()
         self.snapshot_store = snapshot_store
@@ -115,7 +116,11 @@ class DAGScheduler:
 
     async def emit_dag_failed(self, task_id: str, error: str) -> None:
         """Notify WS clients that DAG generation failed."""
+        self._task_errors[task_id] = error
         await self._emit("dag_failed", task_id, error)
+
+    def get_task_error(self, task_id: str) -> str | None:
+        return self._task_errors.get(task_id)
 
     async def _run_node(self, node: DAGNode, executor, dag: TaskDAG):
         try:

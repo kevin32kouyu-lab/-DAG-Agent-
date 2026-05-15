@@ -52,8 +52,8 @@ def _build_tools(store):
 
 
 async def _plan_and_execute(task_id: str, req: CreateTaskRequest, store, gateway, tools):
-    scheduler = get_scheduler()
     try:
+        scheduler = get_scheduler()
         orch = OrchestratorAgent(gateway=gateway, store=store, tool_registry=tools)
         dag, _ = await orch.execute({
             "task_id": task_id,
@@ -106,6 +106,9 @@ async def get_task(task_id: str):
     scheduler = get_scheduler()
     dag = scheduler.get_task_dag(task_id)
     if dag is None:
+        error = scheduler.get_task_error(task_id)
+        if error is not None:
+            return {"task_id": task_id, "status": "failed", "error": error}
         return {"task_id": task_id, "status": "planning"}
     states = {n.state for n in dag.nodes}
     if all(s in {NodeState.COMPLETED, NodeState.DEGRADED} for s in states):
