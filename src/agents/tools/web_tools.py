@@ -38,7 +38,7 @@ class WebScrapeTool(ToolBase):
 
 class WebSearchTool(ToolBase):
     name = "web_search"
-    description = "Search the web for information about a product or topic."
+    description = "Search the web for information about a product or topic. Returns title, url, and snippet for each result."
     param_schema = {
         "query": {"type": "string", "description": "Search query"},
     }
@@ -46,12 +46,14 @@ class WebSearchTool(ToolBase):
     async def execute(self, **kwargs) -> dict[str, Any]:
         query = kwargs.get("query", "")
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.get(
                     "https://html.duckduckgo.com/html/",
                     params={"q": query},
-                    headers={"User-Agent": "CompAgent/1.0"},
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
                 )
+            if resp.status_code != 200:
+                return {"query": query, "error": f"HTTP {resp.status_code}", "results": []}
             soup = BeautifulSoup(resp.text, "html.parser")
             results = []
             for r in soup.select(".result"):
@@ -63,6 +65,12 @@ class WebSearchTool(ToolBase):
                         "url": link.get("href", ""),
                         "snippet": snippet.get_text(strip=True) if snippet else "",
                     })
+            if not results:
+                return {
+                    "query": query,
+                    "error": "Search returned no results. DuckDuckGo may be blocked or the HTML structure changed.",
+                    "results": [],
+                }
             return {"query": query, "results": results[:15]}
         except Exception as e:
-            return {"query": query, "error": str(e), "results": []}
+            return {"query": query, "error": f"Search failed: {e}", "results": []}

@@ -21,9 +21,15 @@ Workflow:
 2. Evaluate credibility: official sites=0.9+, G2/TrustRadius=0.8+, ProductHunt=0.7+
 3. FINALIZE after 2-3 tool calls maximum — summarize what you found in the "result" field
 
+CRITICAL — Handling empty results:
+- If web_search returns empty results or errors twice in a row, FINALIZE IMMEDIATELY
+- Do NOT keep retrying with different queries when search returns nothing
+- In your finalize summary, honestly report that web search returned no results
+- Set confidence low (0.1-0.2) when no sources were found
+
 IMPORTANT: You do NOT need to create graph nodes yourself. Just discover URLs and finalize with the list of sources found.
 """
-    max_steps = 4
+    max_steps = 5
     output_contract = AgentOutput
     model_tier = "batch"
     allowed_tools = ["graph_query", "graph_write", "web_search"]
