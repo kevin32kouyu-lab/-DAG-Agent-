@@ -3,7 +3,6 @@ from src.agents.contracts import AgentOutput
 from src.agents.registry import agent_registry
 from src.infrastructure.degradation import DegradationHandler
 from src.infrastructure.config import config
-from src.infrastructure.audit import AuditLogger
 
 _COLLECTOR_SYSTEM_PROMPT = """You are a Collector agent. Scrape assigned URLs and summarize the content found.
 

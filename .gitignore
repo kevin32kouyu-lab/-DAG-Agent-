@@ -8,3 +8,8 @@ build/
 env/
 *.db
 .env
+.playwright-mcp/
+page-snapshot.yml
+*frontend-screenshot*
+*homepage-screenshot*
+.claude/worktrees/

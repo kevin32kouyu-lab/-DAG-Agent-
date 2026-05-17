@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from datetime import datetime
 from typing import Any
 from pydantic import BaseModel, Field
@@ -86,7 +86,16 @@ class BaseAgent(ABC):
             self._persist_trace(trace)
             self.context.add(thought, result)
 
-        raise RuntimeError(f"{self.agent_type}: exceeded max steps ({self.max_steps})")
+        # Build a degraded output from what we have so far instead of hard crashing
+        degraded_result = {
+            "summary": f"Analysis truncated after {self.max_steps} steps. Partial results from {len(traces)} actions.",
+            "nodes_created": [],
+            "edges_created": [],
+        }
+        output = self._build_output(degraded_result)
+        output.status = "degraded"
+        output.confidence = 0.05
+        return output, traces
 
     def _persist_trace(self, trace: StepTrace) -> None:
         if self.audit_logger:
@@ -229,22 +238,47 @@ Respond with json now."""
             else:
                 result["_prompt"] = prompt + "\n[correction retry]"
                 result["_response"] = resp2.content
+                result["tokens"] = resp2.tokens_in + resp2.tokens_out
+                result["cost"] = resp2.cost
                 return result
         result["_prompt"] = prompt
         result["_response"] = resp.content
+        result["tokens"] = resp.tokens_in + resp.tokens_out
+        result["cost"] = resp.cost
         return result
 
     async def _act(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
         if self.allowed_tools and action not in self.allowed_tools:
-            return {"error": f"Tool '{action}' not in allowed_tools for {self.agent_type}"}
+            return {"error": f"Tool '{action}' not available. Your allowed tools: {self.allowed_tools}"}
         tool = self.tool_registry.get(action)
         if tool:
-            return await tool.execute(**params, _agent_type=self.agent_type)
-        return {"error": f"Tool '{action}' not found"}
+            return await tool.execute(**params, _agent_type=self.agent_type, _task_id=self.context.task_id)
+        registered = self.tool_registry.list_tools() if self.tool_registry else []
+        return {"error": f"Tool '{action}' not found. Available tools: {registered}"}
 
     def _build_output(self, result: dict[str, Any]) -> Any:
         if self.output_contract:
+            # Normalize nodes_created: LLM may produce full node dicts instead of string IDs
+            normalized = dict(result)
+            if "nodes_created" in normalized:
+                normalized["nodes_created"] = [
+                    n["id"] if isinstance(n, dict) and "id" in n else str(n)
+                    for n in normalized["nodes_created"]
+                ]
+            if "edges_created" in normalized:
+                normalized["edges_created"] = [
+                    e["id"] if isinstance(e, dict) and "id" in e else str(e)
+                    for e in normalized["edges_created"]
+                ]
+            # Move any keys not in the contract to `data` so Pydantic doesn't reject them
+            contract_fields = self.output_contract.model_fields
+            extra = {k: v for k, v in normalized.items()
+                     if k not in contract_fields and k not in ("agent_type", "node_id")}
+            normalized = {k: v for k, v in normalized.items()
+                         if k in contract_fields or k in ("agent_type", "node_id")}
+            if extra:
+                normalized.setdefault("data", {}).update(extra)
             return self.output_contract(
-                agent_type=self.agent_type, node_id=self.context.node_id, **result,
+                agent_type=self.agent_type, node_id=self.context.node_id, **normalized,
             )
         return result

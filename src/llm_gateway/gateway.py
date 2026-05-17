@@ -1,6 +1,6 @@
 import os
 from typing import Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from src.llm_gateway.cache import SemanticCache
 from src.llm_gateway.cost_tracker import CostTracker

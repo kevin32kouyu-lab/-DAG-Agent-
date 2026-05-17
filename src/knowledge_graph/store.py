@@ -1,6 +1,5 @@
 import json
 import sqlite3
-from typing import Any
 from src.knowledge_graph.models import (
     GraphNode, GraphEdge, NodeType, EdgeType,
     SourceInfoNode, WebPageNode, ReviewEntryNode, PricingDataNode,
