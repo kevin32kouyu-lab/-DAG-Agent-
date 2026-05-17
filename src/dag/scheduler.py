@@ -124,6 +124,8 @@ class DAGScheduler:
 
     async def _run_node(self, node: DAGNode, executor, dag: TaskDAG):
         try:
+            # Propagate DAG task_id to node context so agents can persist with correct task_id
+            node.context["task_id"] = dag.task_id
             await asyncio.wait_for(executor.execute(node), timeout=NODE_TIMEOUT)
             node.state = NodeState.COMPLETED
             await self._emit("node_completed", node)

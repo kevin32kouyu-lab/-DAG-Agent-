@@ -60,7 +60,7 @@ export default function TaskPanel() {
 
   const schemaRef = useRef<SchemaBuilderHandle>(null);
   const navigate = useNavigate();
-  const { setActiveTaskId, addToHistory, updateHistoryTask } = useTaskContext();
+  const { setActiveTaskId, addToHistory } = useTaskContext();
   const { toast } = useToast();
 
   /* preserved mock history on first load */

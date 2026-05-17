@@ -68,13 +68,29 @@ class GraphWriteTool(ToolBase):
         data = kwargs.get("data", {})
         data["label"] = data.get("label", data.get("name", data.get("url", "")))
 
+        # Normalize: LLM may append "Node" suffix (e.g. "PricingModelNode" vs "PricingModel")
         cls = NODE_TYPE_MAP.get(node_type)
+        if cls is None and node_type.endswith("Node"):
+            cls = NODE_TYPE_MAP.get(node_type[:-4])
         if cls is None:
-            return {"error": f"Unknown node type: {node_type}"}
+            return {"error": f"Unknown node type: '{node_type}'. Valid types: {list(NODE_TYPE_MAP.keys())}"}
 
         agent_type = kwargs.get("_agent_type", "")
         if agent_type:
             data["created_by"] = agent_type
+
+        # inject task_id into metadata for analytics/report queries
+        task_id = kwargs.get("_task_id", "")
+        if task_id:
+            existing_meta = data.get("metadata", {})
+            if isinstance(existing_meta, str):
+                try:
+                    import json
+                    existing_meta = json.loads(existing_meta)
+                except (json.JSONDecodeError, TypeError):
+                    existing_meta = {}
+            existing_meta["task_id"] = task_id
+            data["metadata"] = existing_meta
 
         try:
             node = cls(**data)

@@ -16,7 +16,7 @@ const PRESET_DIMENSIONS: PresetDim[] = [
   { name: '定价策略分析', description: '定价模型拆解、性价比评分', agent_type: 'PricingAnalyst', node_types: ['PricingData', 'PricingModel'], available: true },
   { name: '用户口碑分析', description: '用户评价情感分析、口碑趋势', agent_type: 'SentimentAnalyzer', node_types: ['SentimentNode', 'ReviewEntry'], available: true },
   { name: '技术栈推断', description: '推断产品技术栈、架构特征', agent_type: 'TechStackAnalyzer', node_types: ['TechStack'], available: true },
-  { name: '市场定位分析', description: '市场定位、GTM 策略分析', agent_type: 'MarketPosition', node_types: ['MarketPositionNode'], available: true },
+  { name: '市场定位分析', description: '市场定位、GTM 策略分析', agent_type: 'MarketPositionAnalyzer', node_types: ['MarketPositionNode'], available: true },
   { name: 'AI 能力分析', description: 'AI 功能成熟度与实际可用性对比', agent_type: 'FeatureAnalyzer', node_types: ['FeatureNode'], available: true },
   { name: 'API 与集成生态', description: 'API 开放性、第三方集成生态', agent_type: 'FeatureAnalyzer', node_types: ['FeatureNode'], available: true },
   { name: '客户支持质量', description: '支持渠道、响应速度、用户满意度', agent_type: 'SentimentAnalyzer', node_types: ['SentimentNode'], available: true },
@@ -25,8 +25,8 @@ const PRESET_DIMENSIONS: PresetDim[] = [
   { name: 'Onboarding 体验', description: '新用户上手难度与引导设计', agent_type: 'FeatureAnalyzer', node_types: ['FeatureNode'], available: false },
   { name: '移动端体验', description: '移动端功能完整度与 UX', agent_type: 'FeatureAnalyzer', node_types: ['FeatureNode'], available: false },
   { name: '开源策略', description: '开源程度、社区活跃度', agent_type: 'TechStackAnalyzer', node_types: ['TechStack'], available: false },
-  { name: '国际化程度', description: '多语言支持、区域化运营', agent_type: 'MarketPosition', node_types: ['MarketPositionNode'], available: false },
-  { name: '团队规模推断', description: '从公开信息推断团队规模', agent_type: 'MarketPosition', node_types: ['MetricData'], available: false },
+  { name: '国际化程度', description: '多语言支持、区域化运营', agent_type: 'MarketPositionAnalyzer', node_types: ['MarketPositionNode'], available: false },
+  { name: '团队规模推断', description: '从公开信息推断团队规模', agent_type: 'MarketPositionAnalyzer', node_types: ['MetricData'], available: false },
 ];
 
 const AUDIENCE_OPTIONS = [

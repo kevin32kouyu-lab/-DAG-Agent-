@@ -11,12 +11,12 @@ export type AgentType =
   | 'SentimentAnalyzer'
   | 'PricingAnalyst'
   | 'TechStackAnalyzer'
-  | 'MarketPosition'
-  | 'CrossReview'
-  | 'SWOTSynthesizer'
-  | 'Writer'
-  | 'QAFactCheck'
-  | 'QALogicCheck';
+  | 'MarketPositionAnalyzer'
+  | 'CrossReviewAgent'
+  | 'SWOTAnalyzer'
+  | 'ReportGenerator'
+  | 'QA_FactCheck'
+  | 'QA_LogicCheck';
 
 /* DAG types */
 
@@ -266,4 +266,83 @@ export interface StatusInfo {
   label: string;
   color: string;
   dotColor: string;
+}
+
+/* ── Analytics / Chart types ── */
+
+export interface AnalyticsResponse {
+  task_id: string;
+  products: string[];
+  scoring: ScoringDatum[];
+  features: FeatureAnalytics;
+  sentiment: SentimentAnalytics;
+  pricing: PricingAnalytics;
+  swot: SWOTDatum[];
+  tech_stack: TechStackAnalytics;
+}
+
+export interface ScoringDatum {
+  product: string;
+  dimension: string;
+  score: number;
+  weight: number;
+}
+
+export interface FeatureAnalytics {
+  products: string[];
+  features: FeatureDatum[];
+}
+
+export interface FeatureDatum {
+  feature_name: string;
+  category: string;
+  [productAttr: string]: string;  // e.g. "ProductA_maturity": "ga"
+}
+
+export interface SentimentAnalytics {
+  products: string[];
+  topics: SentimentTopicDatum[];
+}
+
+export interface SentimentTopicDatum {
+  topic: string;
+  [productAttr: string]: number | string;
+}
+
+export interface PricingAnalytics {
+  plans: PricingPlanDatum[];
+  value_scores: ValueScoreDatum[];
+}
+
+export interface PricingPlanDatum {
+  plan_name: string;
+  product: string;
+  price: number;
+  billing_cycle: string;
+}
+
+export interface ValueScoreDatum {
+  product: string;
+  value_score: number;
+  strategy: string;
+  target_segment: string;
+}
+
+export interface SWOTDatum {
+  product: string;
+  strengths_count: number;
+  weaknesses_count: number;
+  opportunities_count: number;
+  threats_count: number;
+}
+
+export interface TechStackAnalytics {
+  languages: TechItem[];
+  frameworks: TechItem[];
+  infra: TechItem[];
+}
+
+export interface TechItem {
+  name: string;
+  [product: string]: boolean | string;
 }

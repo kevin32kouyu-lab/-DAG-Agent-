@@ -122,3 +122,203 @@
 .stagger-item:nth-child(15) { animation-delay: 420ms; }
 .stagger-item:nth-child(16) { animation-delay: 450ms; }
 .stagger-item:nth-child(17) { animation-delay: 480ms; }
+
+/* ---- markdown rendered content ---- */
+
+.md-content .md-h1 { font-size: 1.375rem; font-weight: 700; color: #f1f5f9; margin: 1.5em 0 0.5em; line-height: 1.3; }
+.md-content .md-h2 { font-size: 1.2rem; font-weight: 700; color: #e2e8f0; margin: 1.25em 0 0.4em; line-height: 1.35; }
+.md-content .md-h3 { font-size: 1.05rem; font-weight: 600; color: #cbd5e1; margin: 1em 0 0.3em; line-height: 1.4; }
+.md-content .md-h4,
+.md-content .md-h5,
+.md-content .md-h6 { font-size: 0.95rem; font-weight: 600; color: #94a3b8; margin: 0.75em 0 0.25em; }
+
+.md-content .md-p { margin: 0.5em 0; }
+.md-content .md-spacer { height: 0.5em; }
+
+.md-content strong { color: #e2e8f0; font-weight: 600; }
+.md-content em { font-style: italic; color: #cbd5e1; }
+
+.md-content .md-inline-code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85em;
+  background: rgba(148, 163, 184, 0.1);
+  color: #7dd3fc;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.md-content .md-link {
+  color: #22d3ee;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md-content .md-link:hover { color: #67e8f9; }
+
+.md-content .md-ul,
+.md-content .md-ol {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+.md-content .md-ul { list-style: disc; }
+.md-content .md-ol { list-style: decimal; }
+.md-content li { margin: 0.15em 0; }
+.md-content li::marker { color: #64748b; }
+
+.md-content .md-blockquote {
+  border-left: 3px solid #06b6d4;
+  margin: 0.6em 0;
+  padding: 0.4em 0.8em;
+  background: rgba(6, 182, 212, 0.05);
+  border-radius: 0 4px 4px 0;
+}
+.md-content .md-blockquote p { margin: 0; color: #94a3b8; }
+
+.md-content .md-hr {
+  border: none;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  margin: 1.2em 0;
+}
+
+/* ---- Recharts chart styles ---- */
+
+.recharts-default-tooltip {
+  background: rgba(15, 23, 42, 0.96) !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+}
+
+/* feature heatmap cells */
+.hm-cell {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 500;
+  border-radius: 3px;
+  text-align: center;
+  white-space: nowrap;
+}
+.hm-header {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+/* ---- print / PDF export ---- */
+
+@media print {
+  body {
+    background: white !important;
+    color: #111 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* hide all UI chrome */
+  nav, .sticky, [role="navigation"], button:not(.print-keep) {
+    display: none !important;
+  }
+
+  /* ensure report content fills page */
+  #report-content {
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #report-content * {
+    color: #111 !important;
+  }
+
+  #report-content .text-gray-300,
+  #report-content .text-gray-400,
+  #report-content .text-gray-500,
+  #report-content .text-gray-600 {
+    color: #444 !important;
+  }
+
+  #report-content .border-gray-800\/40,
+  #report-content .border-gray-800\/30,
+  #report-content .border-gray-800\/60 {
+    border-color: #ddd !important;
+  }
+
+  #report-content .bg-gray-900\/50,
+  #report-content .bg-gray-800\/50 {
+    background: #f5f5f5 !important;
+  }
+
+  #report-content .bg-gray-900\/80 {
+    background: white !important;
+  }
+
+  #report-content .from-gray-900\/80 {
+    background: white !important;
+  }
+
+  /* hide interactive elements */
+  button, .group-hover\:opacity-100 {
+    display: none !important;
+  }
+
+  /* markdown content — print friendly */
+  .md-content .md-h1,
+  .md-content .md-h2,
+  .md-content .md-h3,
+  .md-content .md-h4 { color: #111 !important; }
+
+  .md-content .md-p,
+  .md-content li { color: #222 !important; }
+
+  .md-content .md-inline-code {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  .md-content .md-link { color: #0284c7 !important; }
+
+  .md-content .md-blockquote {
+    border-left-color: #0891b2 !important;
+    background: #f8fafc !important;
+  }
+  .md-content .md-blockquote p { color: #475569 !important; }
+
+  .md-content .md-hr { border-top-color: #cbd5e1 !important; }
+
+  .md-content strong { color: #111 !important; }
+
+  /* chart print overrides — Recharts SVG elements */
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line {
+    stroke: #d1d5db !important;
+  }
+  .recharts-text {
+    fill: #111827 !important;
+  }
+  .recharts-cartesian-axis-tick-line,
+  .recharts-cartesian-axis-line {
+    stroke: #9ca3af !important;
+  }
+  .recharts-polar-grid-angle line,
+  .recharts-polar-grid-concentric circle,
+  .recharts-polar-grid-concentric polygon {
+    stroke: #d1d5db !important;
+  }
+  .recharts-tooltip-wrapper {
+    display: none !important;
+  }
+
+  /* heatmap print */
+  .hm-header { color: #374151 !important; }
+
+  @page {
+    margin: 12mm;
+    size: A4;
+  }
+}

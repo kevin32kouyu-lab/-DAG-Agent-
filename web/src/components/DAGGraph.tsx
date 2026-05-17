@@ -12,12 +12,12 @@ const LAYER_MAP: Record<string, number> = {
   SentimentAnalyzer: 4,
   PricingAnalyst: 4,
   TechStackAnalyzer: 4,
-  MarketPosition: 4,
-  CrossReview: 5,
-  SWOTSynthesizer: 6,
-  Writer: 7,
-  QAFactCheck: 8,
-  QALogicCheck: 8,
+  MarketPositionAnalyzer: 4,
+  CrossReviewAgent: 5,
+  SWOTAnalyzer: 6,
+  ReportGenerator: 7,
+  QA_FactCheck: 8,
+  QA_LogicCheck: 8,
 };
 
 const STATE_COLORS: Record<string, string> = {
@@ -47,12 +47,12 @@ const AGENT_SHORT: Record<string, string> = {
   SentimentAnalyzer: 'Sent',
   PricingAnalyst: 'Price',
   TechStackAnalyzer: 'Tech',
-  MarketPosition: 'MktPos',
-  CrossReview: 'XReview',
-  SWOTSynthesizer: 'SWOT',
-  Writer: 'Writer',
-  QAFactCheck: 'QA#1',
-  QALogicCheck: 'QA#2',
+  MarketPositionAnalyzer: 'MktPos',
+  CrossReviewAgent: 'XReview',
+  SWOTAnalyzer: 'SWOT',
+  ReportGenerator: 'Report',
+  QA_FactCheck: 'QA#1',
+  QA_LogicCheck: 'QA#2',
 };
 
 interface DAGGraphProps {

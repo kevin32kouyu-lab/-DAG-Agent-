@@ -17,3 +17,11 @@ def test_get_report_json_format():
     data = resp.json()
     assert data["format"] == "json"
     assert "sections" in data
+
+
+def test_get_report_pdf_format():
+    resp = client.get("/api/report/test_task_1?format=pdf")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert len(resp.content) > 0
+    assert resp.content[:5] == b"%PDF-"

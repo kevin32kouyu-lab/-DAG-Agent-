@@ -42,7 +42,7 @@ Skip sections that have no data AND no general knowledge available.
 class WriterAgent(BaseAgent):
     agent_type = "ReportGenerator"
     system_prompt = WRITER_PROMPT
-    max_steps = 4
+    max_steps = 6
     output_contract = ReportOutput
     model_tier = "analysis"
     allowed_tools = ["graph_query", "graph_write"]
@@ -50,6 +50,21 @@ class WriterAgent(BaseAgent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._targets: list[str] = []
+
+    async def execute(self, task: dict[str, Any]) -> Any:
+        """Override to guarantee output even on max_steps exceeded or other errors."""
+        try:
+            return await super().execute(task)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Writer agent failed, generating fallback report", exc_info=True
+            )
+            # context.init is already called by super().execute() first line;
+            # self._targets is already set by _observe before the failure.
+            # Build a fallback output so _output_data is always available.
+            output = self._build_output({})
+            return output, []
 
     async def _observe(self, task: dict[str, Any]) -> dict[str, Any]:
         self._targets = task.get("input_query", {}).get("targets", [])
@@ -71,7 +86,18 @@ class WriterAgent(BaseAgent):
         sections: list[dict] = []
         md_parts: list[str] = []
 
+        task_id = self.context.task_id
+
         for node in sorted(section_nodes, key=lambda n: getattr(n, "order", 0)):
+            metadata = getattr(node, "metadata", {}) or {}
+            if isinstance(metadata, str):
+                try:
+                    import json
+                    metadata = json.loads(metadata)
+                except (json.JSONDecodeError, TypeError):
+                    metadata = {}
+            if metadata and metadata.get("task_id") != task_id:
+                continue
             sec = getattr(node, "section", "")
             content = getattr(node, "content", "")
             order = getattr(node, "order", 0)
@@ -102,6 +128,9 @@ class WriterAgent(BaseAgent):
 
         summary = result.get("summary", "Report generated") if result else "Report generated"
 
+        # Persist ReportSection nodes to knowledge graph for Layer 1 API
+        self._persist_sections(sections, task_id)
+
         return ReportOutput(
             agent_type=self.agent_type,
             node_id=self.context.node_id,
@@ -111,6 +140,22 @@ class WriterAgent(BaseAgent):
             status="completed",
             data={"report_markdown": report_markdown, "sections": sections},
         )
+
+    def _persist_sections(self, sections: list[dict], task_id: str) -> None:
+        import logging
+        logger = logging.getLogger(__name__)
+        from src.knowledge_graph.models import ReportSectionNode
+        for s in sections:
+            try:
+                node = ReportSectionNode(
+                    section=s.get("section", ""),
+                    content=s.get("content", ""),
+                    order=s.get("order", 0),
+                    metadata={"task_id": task_id},
+                )
+                self.store.create_node(node)
+            except Exception as e:
+                logger.warning(f"Writer: failed to persist ReportSection '{s.get('section', '')}': {e}")
 
     def _fix_product_names(self, text: str) -> str:
         """Ensure the report mentions the actual target product."""

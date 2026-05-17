@@ -22,6 +22,11 @@ Analyze product features from the knowledge graph. For each product:
 
 Output: FeatureNode per feature + one FeatureMatrixNode with the comparison grid.
 Always create derived_from edges to the WebPage/SourceInfo nodes you used.
+
+CRITICAL: If the knowledge graph has limited feature data (upstream may have failed),
+create a partial FeatureMatrix from what IS available and set confidence low (0.1-0.3).
+Use graph_query to check what's available ONCE, then build your analysis.
+Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
 """
     max_steps = 10
     output_contract = FeatureMatrixOutput

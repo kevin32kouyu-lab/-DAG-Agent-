@@ -12,12 +12,12 @@ const AGENT_NAMES: Record<string, string> = {
   SentimentAnalyzer: 'Sentiment Analyzer',
   PricingAnalyst: 'Pricing Analyst',
   TechStackAnalyzer: 'TechStack Analyzer',
-  MarketPosition: 'Market Position',
-  CrossReview: 'Cross-Review',
-  SWOTSynthesizer: 'SWOT Synthesizer',
-  Writer: 'Writer',
-  QAFactCheck: 'QA #1 Fact Check',
-  QALogicCheck: 'QA #2 Logic Check',
+  MarketPositionAnalyzer: 'Market Position',
+  CrossReviewAgent: 'Cross-Review',
+  SWOTAnalyzer: 'SWOT Synthesizer',
+  ReportGenerator: 'Report Generator',
+  QA_FactCheck: 'QA #1 Fact Check',
+  QA_LogicCheck: 'QA #2 Logic Check',
 };
 
 /* ---- progress bar helper ---- */

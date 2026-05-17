@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast';
 import AgentCard from '../components/AgentCard';
 import DAGGraph from '../components/DAGGraph';
 import PipelineSkeleton from '../components/PipelineSkeleton';
-import type { AgentState, AgentGroup, DAGNode, WSEvent, NodeState } from '../types';
+import type { AgentState, AgentGroup, DAGNode, WSEvent, NodeState, AgentType } from '../types';
 
 /* ---- agent grouping ---- */
 
@@ -15,11 +15,11 @@ const GROUP_CONFIG: AgentGroup[] = [
   { role: 'Source Discovery', agentTypes: ['SourceDiscovery'], variant: 'single', description: '信息源侦察 — 搜索可信 URL' },
   { role: 'Collector Group', agentTypes: ['Collector'], variant: 'collection', description: '并行采集 — 网页抓取' },
   { role: 'Data Enricher', agentTypes: ['DataEnricher'], variant: 'single', description: '语境补充 — 关联第三方数据' },
-  { role: 'Analysis Layer', agentTypes: ['FeatureAnalyzer', 'SentimentAnalyzer', 'PricingAnalyst', 'TechStackAnalyzer', 'MarketPosition'], variant: 'analysis', description: '分析 Agent — 等待采集完成' },
-  { role: 'Cross-Review', agentTypes: ['CrossReview'], variant: 'single', description: '水平交叉审查 — 检测分析矛盾' },
-  { role: 'SWOT Synthesizer', agentTypes: ['SWOTSynthesizer'], variant: 'swot', description: '战略综合 — 聚合所有分析' },
-  { role: 'Writer', agentTypes: ['Writer'], variant: 'single', description: '报告撰写 — 生成 Markdown' },
-  { role: 'QA Group', agentTypes: ['QAFactCheck', 'QALogicCheck'], variant: 'qa', description: '双 QA 审查 — 事实 + 逻辑' },
+  { role: 'Analysis Layer', agentTypes: ['FeatureAnalyzer', 'SentimentAnalyzer', 'PricingAnalyst', 'TechStackAnalyzer', 'MarketPositionAnalyzer'], variant: 'analysis', description: '分析 Agent — 等待采集完成' },
+  { role: 'Cross-Review', agentTypes: ['CrossReviewAgent'], variant: 'single', description: '水平交叉审查 — 检测分析矛盾' },
+  { role: 'SWOT Synthesizer', agentTypes: ['SWOTAnalyzer'], variant: 'swot', description: '战略综合 — 聚合所有分析' },
+  { role: 'Report Generator', agentTypes: ['ReportGenerator'], variant: 'single', description: '报告撰写 — 生成 Markdown' },
+  { role: 'QA Group', agentTypes: ['QA_FactCheck', 'QA_LogicCheck'], variant: 'qa', description: '双 QA 审查 — 事实 + 逻辑' },
 ];
 
 function groupAgents(agents: Map<string, AgentState>): { group: AgentGroup; agents: AgentState[] }[] {
@@ -112,13 +112,13 @@ export default function Monitor() {
             for (const n of nodes) {
               agentMap.set(n.node_id, {
                 node_id: n.node_id,
-                agent_type: n.agent_type,
+                agent_type: n.agent_type as AgentType,
                 state: n.state,
                 progress: n.state === 'completed' ? 100 : 0,
               });
               dagList.push({
                 node_id: n.node_id,
-                agent_type: n.agent_type,
+                agent_type: n.agent_type as AgentType,
                 depends_on: n.depends_on,
                 state: n.state,
               });
@@ -138,13 +138,13 @@ export default function Monitor() {
           for (const n of nodes) {
             agentMap.set(n.node_id, {
               node_id: n.node_id,
-              agent_type: n.agent_type,
+              agent_type: n.agent_type as AgentType,
               state: n.state,
               progress: 0,
             });
             dagList.push({
               node_id: n.node_id,
-              agent_type: n.agent_type,
+              agent_type: n.agent_type as AgentType,
               depends_on: n.depends_on,
               state: n.state,
             });
