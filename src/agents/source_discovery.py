@@ -30,6 +30,7 @@ CRITICAL — Handling empty results:
 IMPORTANT: You do NOT need to create graph nodes yourself. Just discover URLs and finalize with the list of sources found.
 """
     max_steps = 5
+    token_budget = 100_000
     output_contract = AgentOutput
     model_tier = "batch"
     allowed_tools = ["graph_query", "graph_write", "web_search"]

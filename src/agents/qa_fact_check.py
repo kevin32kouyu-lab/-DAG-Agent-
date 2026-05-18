@@ -24,7 +24,8 @@ Output your findings in the data field of your finalize result:
 - data.failed_nodes: list of node_ids that failed fact-check
 - data.issues: list of {node_id, reason, severity}
 """
-    max_steps = 15
+    max_steps = 8
+    token_budget = 400_000
     output_contract = AgentOutput
     model_tier = "reasoning"
     allowed_tools = ["graph_query", "graph_write"]

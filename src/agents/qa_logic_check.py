@@ -22,7 +22,8 @@ Read all ReportSection and InsightNode content. Check for:
 Output your findings in the data field of your finalize result:
 - data.contradictions: list of {section_a, section_b, description, severity}
 """
-    max_steps = 15
+    max_steps = 8
+    token_budget = 400_000
     output_contract = AgentOutput
     model_tier = "reasoning"
     allowed_tools = ["graph_query", "graph_write"]

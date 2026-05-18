@@ -23,6 +23,7 @@ class DataEnricherAgent(BaseAgent):
 CRITICAL: You MUST finalize within 5 steps. If any tool returns an error or
 empty data, note it and finalize anyway. NEVER call the same tool twice."""
     max_steps = 7
+    token_budget = 150_000
     output_contract = AgentOutput
     model_tier = "batch"
     allowed_tools = ["graph_query", "graph_write", "web_search", "company_scope"]

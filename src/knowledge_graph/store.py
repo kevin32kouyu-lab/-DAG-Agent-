@@ -38,6 +38,7 @@ class GraphStore:
             CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_id);
             CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(node_type);
         """)
+        self._conn.execute("PRAGMA journal_mode=WAL;")
         self._conn.commit()
 
     def create_node(self, node: GraphNode) -> GraphNode:

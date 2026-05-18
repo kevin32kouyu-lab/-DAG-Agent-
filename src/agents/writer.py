@@ -42,7 +42,8 @@ Skip sections that have no data AND no general knowledge available.
 class WriterAgent(BaseAgent):
     agent_type = "ReportGenerator"
     system_prompt = WRITER_PROMPT
-    max_steps = 6
+    max_steps = 5
+    token_budget = 400_000
     output_contract = ReportOutput
     model_tier = "analysis"
     allowed_tools = ["graph_query", "graph_write"]

@@ -53,13 +53,14 @@ if agent_tokens >= self.token_budget:
 | Agent | 当前 | 改为 | 文件 |
 |-------|------|------|------|
 | BaseAgent 默认 | 15 | 10 | base.py |
-| Writer | 6 | 4 | writer.py |
-| SourceDiscovery | 15(default) | 8 | source_discovery.py |
-| Collector | 15(default) | 8 | collector.py |
-| QA_FactCheck | 15(default) | 8 | qa_fact_check.py |
-| QA_LogicCheck | 15(default) | 8 | qa_logic_check.py |
+| SourceDiscovery | 5 | 5（不变，加 token_budget） | source_discovery.py |
+| Collector | 6 | 6（不变，加 token_budget） | collector.py |
+| DataEnricher | 7 | 7（不变，加 token_budget） | data_enricher.py |
+| Writer | 6 | 5 | writer.py |
+| QA_FactCheck | 15 | 8 | qa_fact_check.py |
+| QA_LogicCheck | 15 | 8 | qa_logic_check.py |
 
-> Orchestrator(5)、DataEnricher(默认→10)、分析 Agent(默认→10) 保持不变或靠 BaseAgent 默认值覆盖。
+> SourceDiscovery/Collector/DataEnricher 的 max_steps 已经较紧，不必再收。分析 Agent/CrossReview/SWOT 通过 BaseAgent 默认值 10 生效。Orchestrator(5) 不变。
 
 ---
 

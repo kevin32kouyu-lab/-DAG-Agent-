@@ -50,7 +50,7 @@ async def test_writer_generates_report_with_real_llm(real_gateway, seeded_store,
     task = {
         "task_id": "int-t1", "node_id": "w1",
         "agent_type": "ReportGenerator",
-        "input_query": {"products": ["Notion", "Confluence"]},
+        "input_query": {"targets": ["Notion", "Confluence"]},
         "context": {},
     }
 
@@ -91,7 +91,7 @@ async def test_writer_json_parse_recovery(real_gateway, seeded_store, real_tools
     task = {
         "task_id": "int-t2", "node_id": "w2",
         "agent_type": "ReportGenerator",
-        "input_query": {"products": ["Notion"]},
+        "input_query": {"targets": ["Notion"]},
         "context": {},
     }
 

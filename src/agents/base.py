@@ -32,7 +32,8 @@ class StepTrace(BaseModel):
 class BaseAgent(ABC):
     agent_type: str = ""
     system_prompt: str = ""
-    max_steps: int = 15
+    max_steps: int = 10
+    token_budget: int = 300_000
     output_contract: type = None
     model_tier: str = "analysis"
     allowed_tools: list[str] = []
@@ -48,6 +49,7 @@ class BaseAgent(ABC):
 
     async def execute(self, task: dict[str, Any]) -> Any:
         self.context.init(task)
+        start_tokens = getattr(getattr(self.gateway, 'cost_tracker', None), 'total_tokens', 0)
         traces: list[StepTrace] = []
 
         for step in range(self.max_steps):
@@ -66,6 +68,18 @@ class BaseAgent(ABC):
             trace.llm_cost = thought.get("cost", 0.0)
             trace.prompt_snapshot = thought.get("_prompt")
             trace.response_snapshot = thought.get("_response")
+
+            total_tokens = getattr(getattr(self.gateway, 'cost_tracker', None), 'total_tokens', 0)
+            if isinstance(total_tokens, (int, float)) and (total_tokens - start_tokens) >= self.token_budget:
+                degraded_result = {
+                    "summary": f"Token budget ({self.token_budget}) exceeded after {step+1} steps",
+                    "nodes_created": [],
+                    "edges_created": [],
+                }
+                output = self._build_output(degraded_result)
+                output.status = "degraded"
+                output.confidence = 0.05
+                return output, traces
 
             if thought.get("action") == "finalize":
                 trace.action = "finalize"
@@ -209,17 +223,15 @@ Respond with json now."""
         )
         result = self._extract_json(resp.content)
         if not result:
-            # Retry once with a correction prompt — the LLM produced unparseable output
             correction = (
-                "Your last response was NOT valid JSON. You MUST output ONLY a valid JSON object "
-                "with no markdown, no XML tags, and no extra text. Wrap strings that contain "
-                "special characters properly. Respond with the JSON object now."
+                "Your last response was NOT valid JSON. "
+                "Output ONLY a valid JSON object with no markdown, no extra text. "
+                "Format: {\"reasoning\":\"...\",\"action\":\"...\",...}. "
+                "Respond with json now."
             )
             resp2 = await self.gateway.chat(
                 system=self.system_prompt,
                 messages=[
-                    {"role": "user", "content": prompt},
-                    {"role": "assistant", "content": (resp.content or "")[:2000]},
                     {"role": "user", "content": correction},
                 ],
                 model_tier=self.model_tier,

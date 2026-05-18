@@ -30,6 +30,7 @@ class CollectorAgent(BaseAgent):
     agent_type = "Collector"
     system_prompt = _COLLECTOR_SYSTEM_PROMPT
     max_steps = 6
+    token_budget = 100_000
     output_contract = AgentOutput
     model_tier = "batch"
     allowed_tools = ["graph_query", "graph_write", "web_scrape"]

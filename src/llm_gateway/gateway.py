@@ -152,6 +152,7 @@ class LLMGateway:
         input_tokens = getattr(usage, "prompt_tokens", 0) or 0
         output_tokens = getattr(usage, "completion_tokens", 0) or 0
         pricing = {
+            "deepseek-chat": (0.27 / 1_000_000, 1.10 / 1_000_000),
             "kimi-k2": (0 / 1_000_000, 0 / 1_000_000),
             "qwen-plus": (2 / 1_000_000, 6 / 1_000_000),
             "glm-4": (1 / 1_000_000, 1 / 1_000_000),
