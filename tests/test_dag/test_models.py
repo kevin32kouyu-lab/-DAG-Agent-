@@ -57,3 +57,62 @@ def test_dag_find_upstream():
     assert "n1" in affected
     assert "n2" in affected
     assert "n3" not in affected  # only upstream, not self
+
+
+def test_dag_node_platform_metadata_defaults():
+    node = DAGNode(
+        node_id="feature_analysis",
+        agent_type="FeatureAnalyzer",
+        input_query={"targets": ["Notion", "ClickUp"]},
+    )
+
+    assert node.stage == ""
+    assert node.role_group == ""
+    assert node.display_name == ""
+    assert node.description == ""
+    assert node.output_contract == ""
+    assert node.degradation_policy == {}
+    assert node.source_policy == {}
+
+
+def test_task_dag_platform_metadata_and_stage_lookup():
+    n1 = DAGNode(
+        node_id="collector",
+        agent_type="Collector",
+        input_query={},
+        stage="collection",
+        role_group="research",
+    )
+    n2 = DAGNode(
+        node_id="feature_analysis",
+        agent_type="FeatureAnalyzer",
+        input_query={},
+        depends_on=["collector"],
+        stage="analysis",
+        role_group="analysis",
+    )
+    dag = TaskDAG(
+        task_id="task_template",
+        nodes=[n1, n2],
+        workflow_template_id="saas_competitor_analysis",
+        scenario="saas",
+        targets=["Notion", "ClickUp"],
+        metadata={"planning_mode": "template"},
+    )
+
+    assert dag.workflow_template_id == "saas_competitor_analysis"
+    assert dag.scenario == "saas"
+    assert dag.targets == ["Notion", "ClickUp"]
+    assert dag.metadata["planning_mode"] == "template"
+    assert dag.get_nodes_by_stage("analysis") == [n2]
+
+
+def test_new_feedback_states_are_non_terminal_until_resolved():
+    n1 = DAGNode(node_id="n1", agent_type="QA_FactCheck", input_query={})
+    n2 = DAGNode(node_id="n2", agent_type="ReportGenerator", input_query={})
+    dag = TaskDAG(task_id="task_feedback", nodes=[n1, n2])
+
+    n1.state = NodeState.REJECTED
+    n2.state = NodeState.RERUNNING
+
+    assert dag.is_terminal() is False

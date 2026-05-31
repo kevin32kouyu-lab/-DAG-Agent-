@@ -11,6 +11,8 @@ class NodeState(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     DEGRADED = "degraded"
+    REJECTED = "rejected"
+    RERUNNING = "rerunning"
 
 
 @dataclass
@@ -26,6 +28,13 @@ class DAGNode:
     qa_round: int = 0
     cross_review_retries: int = 0
     context: dict[str, Any] = field(default_factory=dict)
+    stage: str = ""
+    role_group: str = ""
+    display_name: str = ""
+    description: str = ""
+    output_contract: str = ""
+    degradation_policy: dict[str, Any] = field(default_factory=dict)
+    source_policy: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -43,6 +52,13 @@ class NodeSnapshot:
 class TaskDAG:
     task_id: str
     nodes: list[DAGNode] = field(default_factory=list)
+    workflow_template_id: str = ""
+    scenario: str = ""
+    targets: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def get_nodes_by_stage(self, stage: str) -> list[DAGNode]:
+        return [node for node in self.nodes if node.stage == stage]
 
     def get_ready_nodes(self) -> list[DAGNode]:
         # A dependency is "resolved" if COMPLETED, DEGRADED, or permanently FAILED
