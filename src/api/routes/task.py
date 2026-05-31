@@ -10,6 +10,12 @@ from src.agents.tools.graph_tools import GraphQueryTool, GraphWriteTool
 from src.agents.tools.web_tools import WebScrapeTool, WebSearchTool
 from src.agents.tools.api_tools import ThirdPartyAPITool
 from src.agents.tools.company_scope import CompanyScopeTool
+from src.agents.tools.hackernews_tool import HackerNewsTool
+from src.agents.tools.github_tool import GitHubTool
+from src.agents.tools.news_tools import GoogleNewsTool
+from src.agents.tools.reddit_tool import RedditTool
+from src.agents.tools.tianyancha_tool import TianyanchaTool
+from src.dag.compiler import WorkflowCompileRequest, WorkflowCompiler
 from src.dag.executor import AgentExecutor
 from src.dag.models import NodeState
 
@@ -19,6 +25,7 @@ router = APIRouter()
 class CreateTaskRequest(BaseModel):
     targets: list[str]
     industry: str = "saas"
+    planning_mode: str = "template"
     dimensions: list[dict] = []
     exclude_dimensions: list[str] = []
     focus_points: dict[str, list[str]] = {}
@@ -48,34 +55,58 @@ def _build_tools(store):
     tools.register(WebSearchTool)
     tools.register(ThirdPartyAPITool)
     tools.register(CompanyScopeTool)
+    tools.register(HackerNewsTool)
+    tools.register(GitHubTool)
+    tools.register(GoogleNewsTool)
+    tools.register(RedditTool)
+    tools.register(TianyanchaTool)
     return tools
+
+
+def _compile_template_dag(task_id: str, req: CreateTaskRequest):
+    compiler = WorkflowCompiler()
+    return compiler.compile(WorkflowCompileRequest(
+        task_id=task_id,
+        targets=req.targets,
+        scenario=req.industry,
+        collection_depth=req.collection_depth,
+        schema=req.model_dump(),
+    ))
 
 
 async def _plan_and_execute(task_id: str, req: CreateTaskRequest, store, gateway, tools):
     scheduler = None
     try:
         scheduler = get_scheduler()
-        orch = OrchestratorAgent(gateway=gateway, store=store, tool_registry=tools)
-        dag, _ = await orch.execute({
-            "task_id": task_id,
-            "targets": req.targets,
-            "schema": req.model_dump(),
-        })
+
+        if req.planning_mode == "template":
+            dag = _compile_template_dag(task_id, req)
+        elif req.planning_mode == "orchestrator":
+            orch = OrchestratorAgent(gateway=gateway, store=store, tool_registry=tools)
+            dag, _ = await orch.execute({
+                "task_id": task_id,
+                "targets": req.targets,
+                "schema": req.model_dump(),
+            })
+        else:
+            await scheduler.emit_dag_failed(task_id, f"不支持的规划模式: {req.planning_mode}")
+            return
 
         if dag is None:
             error_msg = "Orchestrator LLM 未能生成 DAG，请重试。提示：确认 API 密钥有效、产品名称正确。"
             await scheduler.emit_dag_failed(task_id, error_msg)
             return
 
-        # Validate DAG has mandatory nodes (belt-and-suspenders — orchestrator
-        # already does this, but we double-check here as a safety net).
-        agent_types = {n.agent_type for n in dag.nodes}
-        missing_mandatory = [a for a in OrchestratorAgent.MANDATORY_AGENTS
-                            if a not in agent_types]
-        if missing_mandatory:
-            error_msg = f"DAG 缺少强制 Agent: {', '.join(missing_mandatory)}。Orchestrator 后验证失败。"
-            await scheduler.emit_dag_failed(task_id, error_msg)
-            return
+        # Validate DAG has mandatory nodes — template mode guarantees this,
+        # but orchestrator (LLM-generated) needs a belt-and-suspenders check.
+        if req.planning_mode == "orchestrator":
+            agent_types = {n.agent_type for n in dag.nodes}
+            missing_mandatory = [a for a in OrchestratorAgent.MANDATORY_AGENTS
+                                if a not in agent_types]
+            if missing_mandatory:
+                error_msg = f"DAG 缺少强制 Agent: {', '.join(missing_mandatory)}。Orchestrator 后验证失败。"
+                await scheduler.emit_dag_failed(task_id, error_msg)
+                return
 
         for node in dag.nodes:
             node.context["task_id"] = task_id

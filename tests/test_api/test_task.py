@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from src.api.app import app
+from src.api.routes.task import CreateTaskRequest
 
 client = TestClient(app)
 
@@ -22,3 +23,20 @@ def test_get_task_returns_404_for_nonexistent():
     """GET /api/task/{task_id} returns 404 when task doesn't exist."""
     resp = client.get("/api/task/nonexistent_task_xyz")
     assert resp.status_code == 404
+
+
+def test_create_task_request_defaults_to_template_planning():
+    req = CreateTaskRequest(targets=["Notion", "ClickUp"], industry="saas")
+
+    assert req.planning_mode == "template"
+    assert req.industry == "saas"
+
+
+def test_create_task_request_accepts_legacy_orchestrator_planning():
+    req = CreateTaskRequest(
+        targets=["Notion", "ClickUp"],
+        industry="saas",
+        planning_mode="orchestrator",
+    )
+
+    assert req.planning_mode == "orchestrator"
