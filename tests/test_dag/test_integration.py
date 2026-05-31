@@ -32,3 +32,34 @@ async def test_full_dag_simulation(temp_db_path):
 
     assert all(n.state == NodeState.COMPLETED for n in dag.nodes)
     assert dag.is_terminal()
+
+
+@pytest.mark.asyncio
+async def test_template_compiled_dag_runs_with_mock_executor():
+    from src.dag.compiler import WorkflowCompileRequest, WorkflowCompiler
+    from src.dag.scheduler import DAGScheduler
+
+    compiler = WorkflowCompiler()
+    dag = compiler.compile(WorkflowCompileRequest(
+        task_id="task_template_run",
+        targets=["Notion", "ClickUp", "飞书"],
+        scenario="saas",
+    ))
+
+    executed = []
+
+    class MockExecutor:
+        gateway = type("_Gateway", (), {"cost_tracker": type("_Tracker", (), {"total_tokens": 0, "total_cost": 0.0})()})()
+        store = type("_Store", (), {"query_nodes": lambda **kw: []})()
+
+        async def execute(self, node):
+            executed.append(node.node_id)
+
+    scheduler = DAGScheduler()
+    await scheduler.run(dag, MockExecutor())
+
+    assert dag.is_terminal() is True
+    assert "source_discovery" in executed
+    assert "report" in executed
+    assert executed.index("source_discovery") < executed.index("collector")
+    assert executed.index("report") > executed.index("swot")
