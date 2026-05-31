@@ -109,10 +109,22 @@ class DAGScheduler:
             nodes_payload.append({
                 "node_id": node.node_id,
                 "agent_type": node.agent_type,
-                "state": node.state if hasattr(node.state, 'value') else str(node.state),
+                "state": node.state.value if hasattr(node.state, "value") else str(node.state),
                 "depends_on": node.depends_on,
+                "stage": getattr(node, "stage", ""),
+                "role_group": getattr(node, "role_group", ""),
+                "display_name": getattr(node, "display_name", ""),
+                "description": getattr(node, "description", ""),
+                "output_contract": getattr(node, "output_contract", ""),
             })
-        await self._emit("dag_created", task_id, nodes_payload)
+        payload = {
+            "workflow_template_id": getattr(dag, "workflow_template_id", ""),
+            "scenario": getattr(dag, "scenario", ""),
+            "targets": getattr(dag, "targets", []),
+            "metadata": getattr(dag, "metadata", {}),
+            "nodes": nodes_payload,
+        }
+        await self._emit("dag_created", task_id, payload)
 
     async def emit_dag_failed(self, task_id: str, error: str) -> None:
         """Notify WS clients that DAG generation failed."""

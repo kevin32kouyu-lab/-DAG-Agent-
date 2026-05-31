@@ -162,15 +162,29 @@ def _ensure_callbacks_registered() -> None:
     scheduler.on("checkpoint_reached", on_checkpoint_reached)
     scheduler.on("checkpoint_released", on_checkpoint_released)
 
-    async def on_dag_created(task_id: str, nodes: list[dict]):
-        await _broadcast(task_id, {
-            "event": "dag_created",
-            "task_id": task_id,
-            "nodes": nodes,
-            "total_cost": _task_costs.get(task_id, 0.0),
-            "total_tokens": _task_tokens.get(task_id, 0),
-            "pages_collected": _task_pages.get(task_id, 0),
-        })
+    async def on_dag_created(task_id: str, nodes_payload):
+        if isinstance(nodes_payload, dict):
+            # New platform payload — extract nodes and spread metadata
+            inner_nodes = nodes_payload.pop("nodes", [])
+            await _broadcast(task_id, {
+                "event": "dag_created",
+                "task_id": task_id,
+                "nodes": inner_nodes,
+                "total_cost": _task_costs.get(task_id, 0.0),
+                "total_tokens": _task_tokens.get(task_id, 0),
+                "pages_collected": _task_pages.get(task_id, 0),
+                **nodes_payload,
+            })
+        else:
+            # Legacy: raw node list
+            await _broadcast(task_id, {
+                "event": "dag_created",
+                "task_id": task_id,
+                "nodes": nodes_payload,
+                "total_cost": _task_costs.get(task_id, 0.0),
+                "total_tokens": _task_tokens.get(task_id, 0),
+                "pages_collected": _task_pages.get(task_id, 0),
+            })
 
     async def on_dag_failed(task_id: str, error: str):
         await _broadcast(task_id, {

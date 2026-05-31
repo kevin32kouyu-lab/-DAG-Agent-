@@ -63,3 +63,42 @@ async def test_scheduler_handles_failure_with_retry(scheduler):
     await scheduler.run(dag, executor)
     assert n1.state == NodeState.COMPLETED
     assert n1.retries == 1
+
+
+@pytest.mark.asyncio
+async def test_emit_dag_created_includes_platform_metadata(scheduler):
+    node = DAGNode(
+        node_id="report",
+        agent_type="ReportGenerator",
+        input_query={},
+        stage="reporting",
+        role_group="reporting",
+        display_name="报告生成",
+        description="生成最终报告",
+        output_contract="ReportOutput",
+    )
+    dag = TaskDAG(
+        task_id="task_meta",
+        nodes=[node],
+        workflow_template_id="saas_competitor_analysis",
+        scenario="saas",
+        targets=["Notion", "ClickUp"],
+        metadata={"planning_mode": "template"},
+    )
+
+    events = []
+
+    async def on_dag_created(task_id, payload):
+        events.append((task_id, payload))
+
+    scheduler.on("dag_created", on_dag_created)
+    await scheduler.emit_dag_created("task_meta", dag)
+
+    assert events[0][0] == "task_meta"
+    payload = events[0][1]
+    assert payload["workflow_template_id"] == "saas_competitor_analysis"
+    assert payload["scenario"] == "saas"
+    assert payload["targets"] == ["Notion", "ClickUp"]
+    assert payload["nodes"][0]["stage"] == "reporting"
+    assert payload["nodes"][0]["role_group"] == "reporting"
+    assert payload["nodes"][0]["display_name"] == "报告生成"
