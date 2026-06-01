@@ -11,11 +11,33 @@ class WebScrapeTool(ToolBase):
         "url": {"type": "string", "description": "The URL to scrape"},
     }
 
+    # 更真实的浏览器 headers — 减少被反爬虫拦截的概率
+    _HEADERS = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
+    }
+
     async def execute(self, **kwargs) -> dict[str, Any]:
         url = kwargs.get("url", "")
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(url, headers={"User-Agent": "CompAgent/1.0"})
+            # follow_redirects=True, longer timeout
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+                resp = await client.get(url, headers=self._HEADERS)
+                if resp.status_code >= 400:
+                    return {"url": url, "error": f"HTTP {resp.status_code}", "title": "", "text": ""}
                 resp.raise_for_status()
 
             soup = BeautifulSoup(resp.text, "html.parser")
