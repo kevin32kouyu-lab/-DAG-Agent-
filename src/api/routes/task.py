@@ -15,6 +15,12 @@ from src.agents.tools.github_tool import GitHubTool
 from src.agents.tools.news_tools import GoogleNewsTool
 from src.agents.tools.reddit_tool import RedditTool
 from src.agents.tools.tianyancha_tool import TianyanchaTool
+from src.agents.tools.tavily_tool import TavilySearchTool
+from src.agents.tools.app_store_tool import AppStoreTool
+from src.agents.tools.producthunt_tool import ProductHuntTool
+from src.agents.tools.wayback_tool import WaybackTool
+from src.agents.tools.google_trends_tool import GoogleTrendsTool
+from src.agents.tools.social_media_tool import SocialMediaTool
 from src.dag.compiler import WorkflowCompileRequest, WorkflowCompiler
 from src.dag.executor import AgentExecutor
 from src.dag.models import NodeState
@@ -53,6 +59,7 @@ def _build_tools(store):
     tools.register(GraphWriteTool, store=store)
     tools.register(WebScrapeTool)
     tools.register(WebSearchTool)
+    tools.register(TavilySearchTool)
     tools.register(ThirdPartyAPITool)
     tools.register(CompanyScopeTool)
     tools.register(HackerNewsTool)
@@ -60,6 +67,11 @@ def _build_tools(store):
     tools.register(GoogleNewsTool)
     tools.register(RedditTool)
     tools.register(TianyanchaTool)
+    tools.register(AppStoreTool)
+    tools.register(ProductHuntTool)
+    tools.register(WaybackTool)
+    tools.register(GoogleTrendsTool)
+    tools.register(SocialMediaTool)
     return tools
 
 

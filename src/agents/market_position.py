@@ -6,7 +6,7 @@ from src.agents.registry import agent_registry
 @agent_registry.register(
     agent_type="MarketPositionAnalyzer",
     depends_on=["DataEnricher"],
-    tools=["graph_query", "graph_write", "web_search"],
+    tools=["graph_query", "graph_write", "web_search", "tavily_search", "google_trends", "social_media"],
     output_contract=MarketPositionOutput,
     model_tier="analysis",
 )
@@ -28,7 +28,7 @@ Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
     max_steps = 10
     output_contract = MarketPositionOutput
     model_tier = "analysis"
-    allowed_tools = ["graph_query", "graph_write", "web_search"]
+    allowed_tools = ["graph_query", "graph_write", "web_search", "tavily_search", "google_trends", "social_media"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)

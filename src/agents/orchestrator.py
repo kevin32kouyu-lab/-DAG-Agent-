@@ -35,6 +35,21 @@ Available agent types and their dependencies:
 - QA_FactCheck: depends_on [ReportGenerator]
 - QA_LogicCheck: depends_on [ReportGenerator]
 
+Available data source tools (agents have access to these):
+- tavily_search: AI-powered web search (1000 free/month)
+- github: Repository stats, releases, contributors (5000 req/h with token)
+- hackernews: Developer community discussions
+- reddit: User sentiment and community feedback
+- google_news: Recent news coverage (RSS)
+- company_scope: Tech stack detection, SEC financials, domain intel, social presence
+- app_store: iOS App Store & Google Play ratings, reviews, update frequency
+- producthunt: Launch heat, community upvotes, product tagline
+- wayback_machine: Website history, redesign cadence, feature launch timeline
+- google_trends: Search interest comparison across products
+- social_media: Chinese platforms (小红书/知乎/微博) brand mentions
+- tianyancha: Chinese company registration data (paid, requires token)
+- web_search / web_scrape: General web data collection
+
 Output ONLY valid JSON in this exact structure:
 {
   "task_id": "...",
@@ -50,7 +65,8 @@ Rules:
 - input_query should contain {"node_type": "..."} or {"product": "...", ...} as appropriate
 - Assign priority 0 (normal) or 1 (high)
 - SourceDiscovery is always the first node with no dependencies
-- Collectors should be per-product (one for each target's official website) plus shared ones (G2, ProductHunt, News)
+- Collectors should be per-product (one for each target's official website) plus shared ones (G2, ProductHunt, HackerNews, GitHub, GoogleNews, Reddit)
+- For Chinese market targets, also query 天眼查 (Tianyancha) for company registration data when a TIANYANCHA_TOKEN is available
 - Skip dimensions excluded in schema.exclude_dimensions (analysis agents only)
 - **ReportGenerator, QA_FactCheck, QA_LogicCheck are ALWAYS required** — never skip them, even if exclude_dimensions lists their upstream
 - SWOTAnalyzer is required unless "swot" is in exclude_dimensions

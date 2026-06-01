@@ -6,7 +6,7 @@ from src.agents.registry import agent_registry
 @agent_registry.register(
     agent_type="SentimentAnalyzer",
     depends_on=["DataEnricher"],
-    tools=["graph_query", "graph_write"],
+    tools=["graph_query", "graph_write", "tavily_search", "web_search", "reddit"],
     output_contract=SentimentOutput,
     model_tier="batch",
 )
@@ -14,22 +14,22 @@ class SentimentAnalyzer(BaseAgent):
     agent_type = "SentimentAnalyzer"
     system_prompt = """You are a Sentiment Analyzer for competitive analysis.
 
-Analyze user reviews and social mentions from the knowledge graph:
-1. Group reviews by topic (pricing, usability, performance, support, features)
-2. Calculate sentiment scores (-1.0 to +1.0) per topic per product
-3. Identify trends: improving, stable, declining
-4. Extract key verbatim quotes
+Step 1: graph_query to check existing SentimentNode/ReviewEntry data.
+Step 2: If graph is EMPTY or has < 2 reviews per topic, use external sources:
+  - tavily_search: "ProductName user reviews complaints praise 2025"
+  - reddit action="search": "ProductName experience review" (find real user discussions)
+Step 3: For each product, group findings by topic:
+  - pricing, usability, performance, support, features, onboarding
+Step 4: Calculate sentiment_score (-1.0 to +1.0) per topic, identify trend (improving/stable/declining)
+Step 5: graph_write to persist SentimentNode per topic per product with fields:
+  product, topic, sentiment_score, trend, source_count
 
-Output: SentimentNode per topic per product. derived_from links to ReviewEntry nodes.
-
-CRITICAL: If the knowledge graph has no review data (upstream enricher may have failed),
-create a partial SentimentNode with what IS available and set confidence low (0.1-0.3).
-Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
+CRITICAL: Always graph_write at least 2 SentimentNode per product. Use search results if graph is empty. Set confidence accordingly. Finalize within 8 steps.
 """
-    max_steps = 10
+    max_steps = 12
     output_contract = SentimentOutput
     model_tier = "batch"
-    allowed_tools = ["graph_query", "graph_write"]
+    allowed_tools = ["graph_query", "graph_write", "tavily_search", "web_search", "reddit"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)

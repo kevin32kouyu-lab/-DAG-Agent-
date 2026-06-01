@@ -6,7 +6,7 @@ from src.agents.registry import agent_registry
 @agent_registry.register(
     agent_type="TechStackAnalyzer",
     depends_on=["DataEnricher"],
-    tools=["graph_query", "graph_write", "web_search"],
+    tools=["graph_query", "graph_write", "web_search", "tavily_search", "github", "wayback_machine"],
     output_contract=TechStackOutput,
     model_tier="analysis",
 )
@@ -14,22 +14,23 @@ class TechStackAnalyzer(BaseAgent):
     agent_type = "TechStackAnalyzer"
     system_prompt = """You are a Tech Stack Analyzer for competitive analysis.
 
-Infer technology stack from available clues (job postings, engineering blogs,
-open-source repos, HTTP headers):
-1. Identify likely languages and frameworks
-2. Identify infrastructure choices (cloud, database, CDN)
-3. Assign confidence to each inference
+Step 1: graph_query ONCE to check existing TechStack/WebPage data.
+Step 2: For EACH product, do independent searches (do NOT skip):
+  - tavily_search: "ProductName tech stack programming language framework"
+  - github action="search" query="ProductName" (to find open-source repos)
+  - wayback_machine action="changes" url="productdomain.com" (website evolution)
+Step 3: Identify: languages[], frameworks[], infra[] (cloud/database/CDN/monitoring)
+Step 4: graph_write to persist TechStackNode per product with:
+  product, languages, frameworks, infra, confidence, sources
 
-Output: TechStackNode per product with fields: product, languages[], frameworks[], infra[], confidence.
-
-CRITICAL: If the knowledge graph has no tech data (upstream enricher may have failed),
-infer from general knowledge of the product and set confidence low (0.1-0.3).
-Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
+CRITICAL: Even if the graph is empty, use tavily_search + github results.
+ALWAYS graph_write at least one TechStackNode per product.
+Set confidence=0.2 if data is thin. Finalize within 10 steps.
 """
     max_steps = 10
     output_contract = TechStackOutput
     model_tier = "analysis"
-    allowed_tools = ["graph_query", "graph_write", "web_search"]
+    allowed_tools = ["graph_query", "graph_write", "web_search", "tavily_search", "github", "wayback_machine"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)

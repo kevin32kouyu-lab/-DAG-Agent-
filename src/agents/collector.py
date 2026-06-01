@@ -22,7 +22,7 @@ FINALIZE after at most 5 tool calls.
 @agent_registry.register(
     agent_type="Collector",
     depends_on=["SourceDiscovery"],
-    tools=["graph_query", "graph_write", "web_scrape"],
+    tools=["graph_query", "graph_write", "web_scrape", "tavily_search", "app_store", "github"],
     output_contract=AgentOutput,
     model_tier="batch",
 )
@@ -33,7 +33,7 @@ class CollectorAgent(BaseAgent):
     token_budget = 100_000
     output_contract = AgentOutput
     model_tier = "batch"
-    allowed_tools = ["graph_query", "graph_write", "web_scrape"]
+    allowed_tools = ["graph_query", "graph_write", "web_scrape", "tavily_search", "app_store", "github"]
 
     def __init__(self, gateway, store, tool_registry, audit_logger=None,
                  degradation_handler=None):

@@ -6,7 +6,7 @@ from src.agents.registry import agent_registry
 @agent_registry.register(
     agent_type="FeatureAnalyzer",
     depends_on=["DataEnricher"],
-    tools=["graph_query", "graph_write"],
+    tools=["graph_query", "graph_write", "tavily_search", "web_search"],
     output_contract=FeatureMatrixOutput,
     model_tier="analysis",
 )
@@ -14,24 +14,23 @@ class FeatureAnalyzer(BaseAgent):
     agent_type = "FeatureAnalyzer"
     system_prompt = """You are a Feature Analyzer for competitive analysis.
 
-Analyze product features from the knowledge graph. For each product:
-1. Extract and categorize features (e.g., UI/UX, Collaboration, AI, API, Security)
-2. Rate maturity: experimental, beta, ga, deprecated
-3. Rate differentiation: unique, advantage, parity, disadvantage
-4. Build a comparative FeatureMatrix across all products
+Step 1: graph_query to check existing FeatureNode/FeatureMatrix data.
+Step 2: If graph is EMPTY or has < 3 features per product, use tavily_search:
+  Query: "ProductName features capabilities overview"
+  Extract: feature names, categories (UI/UX, AI, Collaboration, API, Security, etc.)
+Step 3: For each feature, rate:
+  - maturity: experimental | beta | ga | deprecated
+  - differentiation: unique | advantage | parity | disadvantage
+Step 4: graph_write to persist FeatureNode per feature with fields:
+  feature_name, category, maturity, differentiation, product
+Step 5: Also write one FeatureMatrixNode with the comparison grid.
 
-Output: FeatureNode per feature + one FeatureMatrixNode with the comparison grid.
-Always create derived_from edges to the WebPage/SourceInfo nodes you used.
-
-CRITICAL: If the knowledge graph has limited feature data (upstream may have failed),
-create a partial FeatureMatrix from what IS available and set confidence low (0.1-0.3).
-Use graph_query to check what's available ONCE, then build your analysis.
-Finalize within 5 steps — do NOT loop looking for data that doesn't exist.
+CRITICAL: Always graph_write at least 3 FeatureNode per product. Use search results if graph is empty. Set confidence accordingly. Finalize within 8 steps.
 """
-    max_steps = 10
+    max_steps = 12
     output_contract = FeatureMatrixOutput
     model_tier = "analysis"
-    allowed_tools = ["graph_query", "graph_write"]
+    allowed_tools = ["graph_query", "graph_write", "tavily_search", "web_search"]
 
     async def execute(self, task: dict) -> tuple:
         return await super().execute(task)
