@@ -9,6 +9,7 @@ env/
 *.db
 .env
 .playwright-mcp/
+.worktrees/
 page-snapshot.yml
 *frontend-screenshot*
 *homepage-screenshot*
