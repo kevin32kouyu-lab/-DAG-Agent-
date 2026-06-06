@@ -1,12 +1,17 @@
 # CONTEXT.md
 
 ## 当前正在做什么
-已修复豆包 Ark EP 测试失败：该模型不支持 `response_format.type=json_object`，网关现在会自动省略该参数。
+已完成 Collection Policy Gate 正式设计文档，用于收紧 Agent 采集策略并降低豆包 Demo 的成本和不稳定性。
 
 ## 上次停在哪个位置
-本次局部验证已完成：网关 / API 依赖 / Agent 组件相关测试 49 个通过；真实豆包轻量调用通过，模型 `ep-20260514111325-xjmj7` 返回 `{"ok": true}`。
+设计文档已写入 `docs/superpowers/specs/2026-06-06-collection-policy-gate-design.md`，等待用户 review 后再进入实施计划。
 
 ## 近期关键决定和原因
+- Collection Policy Gate 设计方向已确认：保留多 Agent 分工，但把采集预算、URL 数量、高风险来源过滤、重复调用和失败降级交给策略层控制，避免换模型后搜索策略漂移。
+- 第一版建议支持 `standard`、`deep`、`debug` 三种策略；`standard` 用于 Demo 和低成本运行，默认限制 1 次搜索、最多 5 个抓取 URL，并过滤 G2 / ProductHunt 直接抓取。
+- 本次变慢的直接证据：Collector 对同一批 10 个 URL 重试多轮，其中 G2 / ProductHunt 页面触发 Tavily / Wayback 兜底失败，外部网页抓取比模型调用更耗时。
+- 切换模型后 DeepSeek 缓存不能复用，豆包首次同类任务需要重新生成每个 Agent 步骤；后续同类任务才会命中豆包自己的缓存。
+- 调度器允许上游永久失败后下游降级继续执行，但接口只要有任一节点 failed 就显示任务 failed，前端容易看起来像“还在慢慢跑”。
 - `src/llm_gateway/gateway.py` 对 `ep-` 开头的豆包 Ark endpoint 不再传 `response_format`，避免豆包返回 400；JSON 输出继续由提示词和解析重试兜底。
 - 失败根因：豆包返回 `InvalidParameter`，提示 `response_format.type=json_object` 不被当前模型支持。
 - `src/api/deps.py` 默认 LLM 不再写死 `deepseek-chat`，改为读取 `LLM_DEFAULT_MODEL`，方便在 DeepSeek、豆包 Ark 等 OpenAI-compatible 服务之间切换。
