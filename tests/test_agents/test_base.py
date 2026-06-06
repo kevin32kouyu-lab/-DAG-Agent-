@@ -70,3 +70,48 @@ def test_persist_trace_logs_audit_failure(agent, caplog):
 
     assert "步骤轨迹写入失败" in caplog.text
     assert "audit unavailable" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_observe_does_not_load_entire_graph_without_query(agent):
+    """未指定节点范围时，不应把整个知识图谱塞进 LLM 观察内容。"""
+    agent.store.query_nodes = MagicMock(return_value=[MagicMock(id="n1")])
+
+    observation = await agent._observe({
+        "task_id": "task_1",
+        "node_id": "node_1",
+        "agent_type": "DummyAgent",
+        "input_query": {},
+        "context": {},
+    })
+
+    agent.store.query_nodes.assert_not_called()
+    assert observation["nodes"] == []
+    assert observation["nodes_read"] == []
+    assert observation["graph_query_required"] is True
+
+
+@pytest.mark.asyncio
+async def test_observe_hides_volatile_task_ids(agent):
+    """发给 LLM 的观察内容不应包含每次都会变化的任务 ID。"""
+    task_a = {
+        "task_id": "task_a",
+        "node_id": "node_a",
+        "agent_type": "DummyAgent",
+        "input_query": {"targets": ["Notion"]},
+        "context": {"task_id": "task_a"},
+    }
+    task_b = {
+        "task_id": "task_b",
+        "node_id": "node_b",
+        "agent_type": "DummyAgent",
+        "input_query": {"targets": ["Notion"]},
+        "context": {"task_id": "task_b"},
+    }
+
+    observation_a = await agent._observe(task_a)
+    observation_b = await agent._observe(task_b)
+
+    assert observation_a["task"] == observation_b["task"]
+    assert "task_id" not in str(observation_a["task"])
+    assert "node_id" not in str(observation_a["task"])

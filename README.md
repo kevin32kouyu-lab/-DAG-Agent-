@@ -49,6 +49,7 @@ npm run dev
 - 质量检查减少明显事实错误和逻辑冲突。
 - 图表和报告按当前任务隔离，避免混入历史任务数据。
 - PDF 报告由后端生成，前端只负责下载，避免首屏加载过重。
+- LLM 缓存默认保留 30 天，重复 Demo 更容易命中缓存，减少模型费用。
 - 第三方付费 API 暂以低可信 Demo 降级数据标记，不冒充真实来源。
 
 ## 技术架构
@@ -58,6 +59,8 @@ npm run dev
 ```
 
 后端使用 FastAPI、Pydantic、SQLite、fpdf2 和多个 LLM SDK。前端使用 React、Vite、Tailwind CSS 和 Recharts。知识图谱是报告和图表的数据来源，PDF 由后端生成，图表在报告页按需加载。Agent 不直接互相通信，而是通过知识图谱共享证据和结论。
+
+Agent 默认不会把整个知识图谱直接发给 LLM；只有需要时才通过图谱工具读取当前任务的数据。LLM 缓存有效期可通过 `LLM_CACHE_TTL_SECONDS` 调整。
 
 ## 本地测试
 

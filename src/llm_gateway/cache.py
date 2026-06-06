@@ -10,14 +10,29 @@ import time
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_TTL_SECONDS = 30 * 24 * 60 * 60
+
+
 class SemanticCache:
     """管理 LLM 响应缓存，磁盘失败时降级为内存缓存。"""
 
-    def __init__(self, ttl_seconds: int = 86400, db_path: str = "data/cache.db"):
+    def __init__(self, ttl_seconds: int | None = None, db_path: str = "data/cache.db"):
         self._cache: dict[str, tuple[float, str]] = {}
-        self.ttl = ttl_seconds
+        self.ttl = ttl_seconds if ttl_seconds is not None else self._ttl_from_env()
         self._db_path = db_path
         self._init_db()
+
+    @staticmethod
+    def _ttl_from_env() -> int:
+        """从环境变量读取缓存有效期，默认保留 30 天。"""
+        raw = os.getenv("LLM_CACHE_TTL_SECONDS")
+        if not raw:
+            return DEFAULT_TTL_SECONDS
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            logger.warning("缓存有效期配置无效，已使用默认值: %s", raw)
+            return DEFAULT_TTL_SECONDS
 
     def _init_db(self) -> None:
         """初始化 SQLite 缓存表，失败时记录日志并保留内存缓存能力。"""

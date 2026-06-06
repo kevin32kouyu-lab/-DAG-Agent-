@@ -4,11 +4,11 @@
 - `src/knowledge_graph/`：保存采集、分析和报告节点，是报告与仪表盘的数据来源。
 - `src/agents/`：按职责运行采集、分析、写作、复核等 Agent。
 - `src/agents/orchestrator.py`：把用户任务规划成 DAG，LLM 输出无法解析或坏节点被跳过时记录日志，并在补齐强制节点前过滤坏节点。
-- `src/agents/base.py`：提供所有 Agent 的基础执行循环和步骤轨迹写入，审计写入失败时记录日志但不中断主流程。
+- `src/agents/base.py`：提供所有 Agent 的基础执行循环和步骤轨迹写入；默认观察内容不预加载全库节点，也不把随机任务 ID 发给 LLM。
 - `src/agents/writer.py`：生成最终报告；图谱读取失败时记录日志并使用本地兜底报告，避免报告任务二次失败。
 - `src/agents/tools/graph_tools.py`：给 Agent 查询和写入知识图谱，默认按当前 `_task_id` 隔离数据。
 - `src/agents/tools/web_tools.py`：提供网页搜索、单页抓取和批量抓取；直接抓取失败时依次尝试 Tavily 和 Wayback 兜底。
-- `src/llm_gateway/cache.py`：缓存 LLM 响应，SQLite 不可用时记录日志并降级为内存缓存。
+- `src/llm_gateway/cache.py`：缓存 LLM 响应，默认保留 30 天；SQLite 不可用时记录日志并降级为内存缓存。
 - `src/dag/`：编排任务节点执行顺序，记录每个任务的目标产品和运行状态；快照、成本更新、事件回调和检查点超时都会记录日志。
 - `src/dag/executor.py`：把 DAG 节点映射到具体 Agent；未知 Agent、模块导入失败和类名缺失都会返回可读错误，方便排查 DAG 配置。
 - `src/dag/feedback.py`：处理 QA 和 Cross-Review 反馈，审计写入失败时记录日志但不阻塞节点重置或降级。
@@ -34,6 +34,7 @@
 - `/api/report/{task_id}/analytics` 只负责路由转发，具体数据组装交给 `src/api/analytics_builder.py`。
 - `analytics_builder.py` 优先读取当前任务的结构化知识图谱节点；如果没有可用结构化图表数据，再读取当前任务的 `ReportSection` 正文解析兜底。
 - Agent 通过 `GraphQueryTool` 查询知识图谱时默认只看到当前 `_task_id` 的节点，避免报告生成和 QA 阶段读取历史任务残留。
+- Agent 默认观察阶段只提供稳定任务输入，不再读取整个知识图谱；需要图谱数据时由 `GraphQueryTool` 按当前任务隔离读取。
 
 ## 关键设计决定
 - 历史数据不删除，问题通过任务隔离修复，避免影响已有记录。
@@ -52,6 +53,8 @@
 - 网页抓取兜底失败不阻塞最终错误返回，但 Tavily 和 Wayback 异常必须记录日志，方便判断采集失败原因。
 - Orchestrator 的 LLM 规划失败或节点字段不完整不改变原有兜底流程，但必须记录日志；强制节点补齐前先过滤坏节点，避免部分坏节点打断完整 DAG 生成。
 - LLM 缓存失败不阻塞主流程，但初始化、读取和写入失败都要记录日志，避免静默失效。
+- LLM 缓存默认保留 30 天，可用 `LLM_CACHE_TTL_SECONDS` 调整，避免跨天 Demo 重跑时重新消耗模型额度。
+- LLM 缓存 key 不应包含随机任务 ID；BaseAgent 发给 LLM 的观察内容会隐藏 `task_id`、`node_id` 等易变字段，提高重复任务命中率。
 - `include_all=True` 只作为调试入口保留，正常 Agent 查询不使用全库数据。
 - 对外展示优先讲报告结果，DAG、Trace 和 Agent 细节保留为次级入口。
 - PDF 导出统一放在后端生成，前端不再携带大体积 PDF 渲染库。

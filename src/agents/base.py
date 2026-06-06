@@ -130,11 +130,15 @@ class BaseAgent(ABC):
                 )
 
     async def _observe(self, task: dict[str, Any]) -> dict[str, Any]:
+        """构建 LLM 观察内容；未限定范围时不预加载全库节点。"""
         query = task.get("input_query", {})
-        nodes = self.store.query_nodes(
-            node_type=query.get("node_type"),
-            layer=query.get("layer"),
-        )
+        should_query_graph = query.get("node_type") is not None or query.get("layer") is not None
+        nodes = []
+        if should_query_graph:
+            nodes = self.store.query_nodes(
+                node_type=query.get("node_type"),
+                layer=query.get("layer"),
+            )
         history_summary = []
         for entry in self.context.history[-5:]:
             thought = entry.get("thought", {})
@@ -144,11 +148,22 @@ class BaseAgent(ABC):
                 "params": thought.get("params", {}),
                 "result_summary": str(result)[:500],
             })
+        visible_context = {
+            key: value
+            for key, value in (task.get("context", {}) or {}).items()
+            if key not in {"task_id", "node_id", "error", "_output_data"}
+        }
+        visible_task = {
+            "agent_type": task.get("agent_type", self.agent_type),
+            "input_query": query,
+            "context": visible_context,
+        }
         return {
             "nodes": [n.model_dump(mode="json") for n in nodes],
             "nodes_read": [n.id for n in nodes],
-            "task": task,
+            "task": visible_task,
             "previous_actions": history_summary,
+            "graph_query_required": not should_query_graph,
         }
 
     @staticmethod

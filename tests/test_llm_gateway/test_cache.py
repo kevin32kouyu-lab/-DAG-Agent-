@@ -28,6 +28,22 @@ def test_cache_key_deterministic():
     assert key1 != key3
 
 
+def test_cache_default_ttl_is_long_enough_for_demo_replays(tmp_path, monkeypatch):
+    """默认缓存应覆盖跨天 Demo 回放，避免第二天重新烧 LLM。"""
+    monkeypatch.delenv("LLM_CACHE_TTL_SECONDS", raising=False)
+    cache = SemanticCache(db_path=str(tmp_path / "cache.db"))
+
+    assert cache.ttl >= 30 * 24 * 60 * 60
+
+
+def test_cache_ttl_can_be_configured_from_env(tmp_path, monkeypatch):
+    """缓存有效期可通过环境变量调整。"""
+    monkeypatch.setenv("LLM_CACHE_TTL_SECONDS", "7200")
+    cache = SemanticCache(db_path=str(tmp_path / "cache.db"))
+
+    assert cache.ttl == 7200
+
+
 def test_cache_expiry():
     cache = SemanticCache(ttl_seconds=0)  # immediate expiry
     cache.set("p", "s", [], "response")

@@ -1,12 +1,16 @@
 # CONTEXT.md
 
 ## 当前正在做什么
-已完成报告链路和 DAG 执行器边界整理，并准备合并到 main 后启动前后端。
+已定位并修复 LLM 缓存大量未命中的主要原因：Agent 默认观察阶段不再把全库节点和随机任务 ID 发给 LLM，缓存默认有效期延长到 30 天。
 
 ## 上次停在哪个位置
-合并前验证已完成：后端全量本地测试 289 个通过、24 个跳过，剩余 1 个外部依赖警告；前端 lint、32 个测试和构建通过。
+本次验证已完成：Agent / Writer / 缓存相关测试 60 个通过；后端全量本地测试 293 个通过、24 个跳过，剩余 1 个外部依赖警告；用当前知识图谱模拟观察内容，节点数从全库 1353 个降为 0 个，观察文本约 178 字符，且不同 task_id 的观察内容一致。
 
 ## 近期关键决定和原因
+- `src/agents/base.py` 未指定 `node_type` 或 `layer` 时不再调用 `store.query_nodes()` 读取全库，避免把历史报告节点塞进每次 LLM prompt。
+- `src/agents/base.py` 发给 LLM 的 `task` 会隐藏 `task_id`、`node_id`、`context.task_id` 等随机字段，提高同类任务缓存命中率；工具执行仍保留真实 task_id。
+- `src/llm_gateway/cache.py` 默认缓存有效期从 24 小时改为 30 天，并支持 `LLM_CACHE_TTL_SECONDS` 环境变量，避免跨天 Demo 重跑时重新消耗模型额度。
+- 本次排查证据：当前知识图谱有 1353 个节点，其中 1228 个是历史 `ReportSection`；刚才任务 `task_3_40421cb4` 的 ReportGenerator / QA 两个节点每次约 36.7 万 token。
 - `src/agents/writer.py` 图谱读取失败时会记录日志并生成本地兜底报告，避免报告兜底路径再次失败。
 - `tests/test_agents/test_writer.py` 已覆盖 Writer 图谱读取失败时仍能返回兜底报告。
 - `src/api/report_pdf.py` 中文字体注册失败时会记录日志并回退到 Helvetica，避免页脚继续使用失败字体导致 PDF 导出中断。
