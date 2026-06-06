@@ -1,4 +1,6 @@
 import pytest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 from src.llm_gateway.gateway import LLMGateway
 
 
@@ -66,3 +68,30 @@ def test_resolve_model_with_openai():
     )
     assert gw.resolve_model("reasoning") == "deepseek-v4"
     assert gw._get_provider("deepseek-v4") == "openai_compatible"
+
+
+@pytest.mark.asyncio
+async def test_doubao_ep_omits_unsupported_response_format():
+    """豆包 EP 不支持 json_object 参数，网关应自动去掉。"""
+    gw = LLMGateway()
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(
+        return_value=SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1),
+        )
+    )
+    gw._openai_clients["ep-test"] = mock_client
+
+    await gw._chat_openai(
+        "ep-test",
+        "system",
+        [{"role": "user", "content": "return json"}],
+        max_tokens=128,
+        temperature=0.1,
+        response_format={"type": "json_object"},
+    )
+
+    kwargs = mock_client.chat.completions.create.call_args.kwargs
+    assert kwargs["model"] == "ep-test"
+    assert "response_format" not in kwargs

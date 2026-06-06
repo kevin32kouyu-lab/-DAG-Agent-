@@ -119,7 +119,7 @@ class LLMGateway:
         client = self._get_openai_client(model)
         api_messages = [{"role": "system", "content": system}] + messages
         kwargs = dict(model=model, messages=api_messages, max_tokens=max_tokens, temperature=temperature)
-        if response_format:
+        if response_format and self._supports_response_format(model):
             kwargs["response_format"] = response_format
         resp = await client.chat.completions.create(**kwargs)
         return LLMResponse(
@@ -130,6 +130,11 @@ class LLMGateway:
             cost=self._estimate_cost_openai(model, resp.usage),
             raw=resp,
         )
+
+    @staticmethod
+    def _supports_response_format(model: str) -> bool:
+        """判断 OpenAI-compatible 模型是否支持 response_format 参数。"""
+        return not model.startswith("ep-")
 
     @staticmethod
     def _estimate_cost(model: str, usage: Any) -> float:

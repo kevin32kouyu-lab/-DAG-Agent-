@@ -1,12 +1,14 @@
 # CONTEXT.md
 
 ## 当前正在做什么
-已将默认 LLM 从 DeepSeek 切换为豆包 Ark EP，并让后端默认模型支持通过 `.env` 配置。
+已修复豆包 Ark EP 测试失败：该模型不支持 `response_format.type=json_object`，网关现在会自动省略该参数。
 
 ## 上次停在哪个位置
-本次局部验证已完成：API 依赖和网关相关测试 7 个通过；`.env` 已改为 `LLM_DEFAULT_MODEL=ep-20260514111325-xjmj7`、`OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3`，密钥不进入 Git。
+本次局部验证已完成：网关 / API 依赖 / Agent 组件相关测试 49 个通过；真实豆包轻量调用通过，模型 `ep-20260514111325-xjmj7` 返回 `{"ok": true}`。
 
 ## 近期关键决定和原因
+- `src/llm_gateway/gateway.py` 对 `ep-` 开头的豆包 Ark endpoint 不再传 `response_format`，避免豆包返回 400；JSON 输出继续由提示词和解析重试兜底。
+- 失败根因：豆包返回 `InvalidParameter`，提示 `response_format.type=json_object` 不被当前模型支持。
 - `src/api/deps.py` 默认 LLM 不再写死 `deepseek-chat`，改为读取 `LLM_DEFAULT_MODEL`，方便在 DeepSeek、豆包 Ark 等 OpenAI-compatible 服务之间切换。
 - 当前 `.env` 接入豆包 `Doubao-Seed-2.0-lite` 的 EP：`ep-20260514111325-xjmj7`；API key 保存在本地 `.env`，不会提交到 Git。
 - `src/agents/base.py` 未指定 `node_type` 或 `layer` 时不再调用 `store.query_nodes()` 读取全库，避免把历史报告节点塞进每次 LLM prompt。
