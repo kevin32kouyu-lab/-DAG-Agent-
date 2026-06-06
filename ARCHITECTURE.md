@@ -9,6 +9,7 @@
 - `src/agents/tools/graph_tools.py`：给 Agent 查询和写入知识图谱，默认按当前 `_task_id` 隔离数据。
 - `src/agents/tools/web_tools.py`：提供网页搜索、单页抓取和批量抓取；直接抓取失败时依次尝试 Tavily 和 Wayback 兜底。
 - `src/llm_gateway/cache.py`：缓存 LLM 响应，默认保留 30 天；SQLite 不可用时记录日志并降级为内存缓存。
+- `src/api/deps.py`：集中创建后端共享依赖；默认 LLM 模型可通过 `LLM_DEFAULT_MODEL` 切换，并按 OpenAI-compatible 方式调用。
 - `src/dag/`：编排任务节点执行顺序，记录每个任务的目标产品和运行状态；快照、成本更新、事件回调和检查点超时都会记录日志。
 - `src/dag/executor.py`：把 DAG 节点映射到具体 Agent；未知 Agent、模块导入失败和类名缺失都会返回可读错误，方便排查 DAG 配置。
 - `src/dag/feedback.py`：处理 QA 和 Cross-Review 反馈，审计写入失败时记录日志但不阻塞节点重置或降级。
@@ -55,6 +56,7 @@
 - LLM 缓存失败不阻塞主流程，但初始化、读取和写入失败都要记录日志，避免静默失效。
 - LLM 缓存默认保留 30 天，可用 `LLM_CACHE_TTL_SECONDS` 调整，避免跨天 Demo 重跑时重新消耗模型额度。
 - LLM 缓存 key 不应包含随机任务 ID；BaseAgent 发给 LLM 的观察内容会隐藏 `task_id`、`node_id` 等易变字段，提高重复任务命中率。
+- 默认 LLM 不再写死 DeepSeek；`.env` 中的 `LLM_DEFAULT_MODEL`、`OPENAI_API_KEY` 和 `OPENAI_BASE_URL` 决定实际接入的 OpenAI-compatible 服务。
 - `include_all=True` 只作为调试入口保留，正常 Agent 查询不使用全库数据。
 - 对外展示优先讲报告结果，DAG、Trace 和 Agent 细节保留为次级入口。
 - PDF 导出统一放在后端生成，前端不再携带大体积 PDF 渲染库。

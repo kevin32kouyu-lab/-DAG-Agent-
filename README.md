@@ -62,6 +62,8 @@ npm run dev
 
 Agent 默认不会把整个知识图谱直接发给 LLM；只有需要时才通过图谱工具读取当前任务的数据。LLM 缓存有效期可通过 `LLM_CACHE_TTL_SECONDS` 调整。
 
+默认 LLM 使用 OpenAI-compatible 接口，实际模型由 `.env` 中的 `LLM_DEFAULT_MODEL`、`OPENAI_API_KEY` 和 `OPENAI_BASE_URL` 决定。
+
 ## 本地测试
 
 ### 后端测试

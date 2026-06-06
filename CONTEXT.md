@@ -1,12 +1,14 @@
 # CONTEXT.md
 
 ## 当前正在做什么
-已定位并修复 LLM 缓存大量未命中的主要原因：Agent 默认观察阶段不再把全库节点和随机任务 ID 发给 LLM，缓存默认有效期延长到 30 天。
+已将默认 LLM 从 DeepSeek 切换为豆包 Ark EP，并让后端默认模型支持通过 `.env` 配置。
 
 ## 上次停在哪个位置
-本次验证已完成：Agent / Writer / 缓存相关测试 60 个通过；后端全量本地测试 293 个通过、24 个跳过，剩余 1 个外部依赖警告；用当前知识图谱模拟观察内容，节点数从全库 1353 个降为 0 个，观察文本约 178 字符，且不同 task_id 的观察内容一致。
+本次局部验证已完成：API 依赖和网关相关测试 7 个通过；`.env` 已改为 `LLM_DEFAULT_MODEL=ep-20260514111325-xjmj7`、`OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3`，密钥不进入 Git。
 
 ## 近期关键决定和原因
+- `src/api/deps.py` 默认 LLM 不再写死 `deepseek-chat`，改为读取 `LLM_DEFAULT_MODEL`，方便在 DeepSeek、豆包 Ark 等 OpenAI-compatible 服务之间切换。
+- 当前 `.env` 接入豆包 `Doubao-Seed-2.0-lite` 的 EP：`ep-20260514111325-xjmj7`；API key 保存在本地 `.env`，不会提交到 Git。
 - `src/agents/base.py` 未指定 `node_type` 或 `layer` 时不再调用 `store.query_nodes()` 读取全库，避免把历史报告节点塞进每次 LLM prompt。
 - `src/agents/base.py` 发给 LLM 的 `task` 会隐藏 `task_id`、`node_id`、`context.task_id` 等随机字段，提高同类任务缓存命中率；工具执行仍保留真实 task_id。
 - `src/llm_gateway/cache.py` 默认缓存有效期从 24 小时改为 30 天，并支持 `LLM_CACHE_TTL_SECONDS` 环境变量，避免跨天 Demo 重跑时重新消耗模型额度。
