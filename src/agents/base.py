@@ -1,11 +1,16 @@
+"""这个模块提供所有 Agent 的基础执行循环、思考解析和步骤轨迹记录。"""
+
 from abc import ABC
 from datetime import datetime
+import logging
 from typing import Any
 from pydantic import BaseModel, Field
 from src.agents.context import AgentContext
 from src.agents.tools.base import ToolRegistry
 from src.knowledge_graph.store import GraphStore
 from src.llm_gateway.gateway import LLMGateway
+
+logger = logging.getLogger(__name__)
 
 
 class StepTrace(BaseModel):
@@ -115,8 +120,14 @@ class BaseAgent(ABC):
         if self.audit_logger:
             try:
                 self.audit_logger.log_step_trace(trace)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "步骤轨迹写入失败: task_id=%s, node_id=%s, step=%s, reason=%s",
+                    trace.task_id,
+                    trace.node_id,
+                    trace.step_number,
+                    exc,
+                )
 
     async def _observe(self, task: dict[str, Any]) -> dict[str, Any]:
         query = task.get("input_query", {})

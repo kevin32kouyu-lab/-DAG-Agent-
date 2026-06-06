@@ -14,7 +14,7 @@ interface BarChartProps {
 }
 
 export default function BarChart({
-  data, dataKeys, xAxisKey, products: _products, layout, height,
+  data, dataKeys, xAxisKey, layout, height,
 }: BarChartProps) {
   if (!data || data.length === 0) return null;
 

@@ -7,6 +7,10 @@ build/
 .venv/
 env/
 *.db
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/task_targets.json
 .env
 .playwright-mcp/
 .worktrees/

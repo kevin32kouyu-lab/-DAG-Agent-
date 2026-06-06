@@ -1,3 +1,5 @@
+// 这个组件汇总 SWOT 四象限数量，帮助快速判断报告结论分布。
+
 import type { SWOTDatum } from '../../types';
 
 interface SWOTQuadrantProps {
@@ -6,10 +8,10 @@ interface SWOTQuadrantProps {
 }
 
 const quadrants = [
-  { key: 'strengths_count' as const, label: '优势 Strengths', color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
-  { key: 'weaknesses_count' as const, label: '劣势 Weaknesses', color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
-  { key: 'opportunities_count' as const, label: '机会 Opportunities', color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
-  { key: 'threats_count' as const, label: '威胁 Threats', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+  { key: 'strengths_count' as const, label: '优势 Strengths', color: '#15803d', bg: '#f0fdf4' },
+  { key: 'weaknesses_count' as const, label: '劣势 Weaknesses', color: '#b91c1c', bg: '#fef2f2' },
+  { key: 'opportunities_count' as const, label: '机会 Opportunities', color: '#1d4ed8', bg: '#eff6ff' },
+  { key: 'threats_count' as const, label: '威胁 Threats', color: '#c2410c', bg: '#fff7ed' },
 ];
 
 export default function SWOTQuadrant({ data, products }: SWOTQuadrantProps) {
@@ -33,7 +35,7 @@ export default function SWOTQuadrant({ data, products }: SWOTQuadrantProps) {
         return (
           <div
             key={q.key}
-            className="rounded-xl p-4 border border-gray-800/40"
+            className="rounded-lg border border-slate-200 p-4"
             style={{ background: q.bg }}
           >
             <div className="flex items-center justify-between mb-2">
@@ -44,7 +46,7 @@ export default function SWOTQuadrant({ data, products }: SWOTQuadrantProps) {
                 {count}
               </span>
             </div>
-            <div className="h-2 bg-gray-800/40 rounded-full overflow-hidden">
+            <div className="h-2 overflow-hidden rounded-full bg-white/70">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${pct}%`, background: q.color }}
@@ -55,8 +57,8 @@ export default function SWOTQuadrant({ data, products }: SWOTQuadrantProps) {
               <div className="mt-2 space-y-1">
                 {data.map(d => (
                   <div key={d.product} className="flex items-center justify-between text-[11px]">
-                    <span className="text-gray-500">{d.product}</span>
-                    <span className="text-gray-300 font-mono">{d[q.key]}</span>
+                    <span className="text-slate-500">{d.product}</span>
+                    <span className="font-mono text-slate-700">{d[q.key]}</span>
                   </div>
                 ))}
               </div>

@@ -1,4 +1,10 @@
+"""这个模块处理 QA 和 Cross-Review 反馈，决定哪些 DAG 节点需要重跑或降级。"""
+
+import logging
+
 from src.dag.models import TaskDAG, NodeState
+
+logger = logging.getLogger(__name__)
 
 
 class FeedbackHandler:
@@ -124,8 +130,9 @@ class FeedbackHandler:
         return affected_nodes
 
     def _audit(self, event: str, data: dict) -> None:
+        """记录反馈事件，审计失败时写日志但不阻塞反馈处理。"""
         if self.audit_logger:
             try:
                 self.audit_logger.log_event("", "", "", event, data)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("反馈审计写入失败: event=%s, reason=%s", event, exc)

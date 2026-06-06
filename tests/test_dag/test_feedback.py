@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import MagicMock
 from src.dag.models import DAGNode, TaskDAG, NodeState
 from src.dag.feedback import FeedbackHandler
 
@@ -165,3 +166,23 @@ class TestFeedbackCrossReviewRejection:
         feat_node = dag.get_node("feat")
         assert feat_node.state == NodeState.DEGRADED
         assert feat_node.cross_review_retries == 1  # unchanged, capped
+
+
+def test_feedback_audit_failure_is_logged(caplog):
+    dag = build_test_dag()
+    audit_logger = MagicMock()
+    audit_logger.log_event.side_effect = RuntimeError("audit unavailable")
+    handler = FeedbackHandler(audit_logger=audit_logger)
+    flags = [
+        {"flag_type": "conflict", "severity": "high",
+         "involved_agents": ["FeatureAnalyzer"],
+         "description": "Conflict detected"},
+    ]
+
+    caplog.set_level("WARNING", logger="src.dag.feedback")
+
+    affected = handler.handle_cross_review_rejection(dag, flags)
+
+    assert "feat" in affected
+    assert "反馈审计写入失败" in caplog.text
+    assert "audit unavailable" in caplog.text

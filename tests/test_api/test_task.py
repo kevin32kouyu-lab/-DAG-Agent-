@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from src.api.app import app
-from src.api.routes.task import CreateTaskRequest
+from src.api.routes.task import CreateTaskRequest, _persist_task_targets
 
 client = TestClient(app)
 
@@ -40,3 +40,26 @@ def test_create_task_request_accepts_legacy_orchestrator_planning():
     )
 
     assert req.planning_mode == "orchestrator"
+
+
+def test_persist_task_targets_preserves_existing_targets(tmp_path):
+    targets_file = tmp_path / "task_targets.json"
+    targets_file.write_text('{"old_task": ["Old"]}', encoding="utf-8")
+
+    _persist_task_targets("new_task", ["Notion", "Linear"], targets_file=targets_file)
+
+    content = targets_file.read_text(encoding="utf-8")
+    assert '"old_task"' in content
+    assert '"new_task"' in content
+    assert "Notion" in content
+    assert "Linear" in content
+
+
+def test_persist_task_targets_logs_corrupted_file(tmp_path, caplog):
+    targets_file = tmp_path / "task_targets.json"
+    targets_file.write_text("{bad json", encoding="utf-8")
+
+    _persist_task_targets("new_task", ["Notion"], targets_file=targets_file)
+
+    assert "任务目标缓存读取失败" in caplog.text
+    assert "new_task" in targets_file.read_text(encoding="utf-8")

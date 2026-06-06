@@ -134,6 +134,8 @@ class GraphStore:
         metadata = json.loads(row["metadata"]) if row["metadata"] else {}
         props = json.loads(row["properties"]) if row["properties"] else {}
         all_props = {**metadata, **props, **extras}
+        all_props["metadata"] = metadata
+        all_props["properties"] = props
         all_props["id"] = row["id"]
         all_props["label"] = row["label"]
         all_props["layer"] = row["layer"]

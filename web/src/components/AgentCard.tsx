@@ -25,9 +25,9 @@ const AGENT_NAMES: Record<string, string> = {
 function ProgressBar({ pct }: { pct?: number }) {
   if (pct === undefined || pct < 0) return null;
   return (
-    <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden mt-1">
+    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
       <div
-        className="h-full bg-amber-500 rounded-full transition-all duration-700 animate-pulse"
+        className="h-full rounded-full bg-teal-700 transition-all duration-700 animate-pulse"
         style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
       />
     </div>
@@ -51,37 +51,37 @@ export default function AgentCard({ agent, variant = 'compact' }: AgentCardProps
   };
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-700 transition-all active:scale-[0.98] animate-slideUp stagger-item">
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all hover:border-teal-200 active:scale-[0.98] animate-slideUp stagger-item">
       {/* header */}
       <div className="flex items-center gap-2 mb-1">
         <StatusDot state={agent.state} />
-        <span className="text-xs text-gray-500 font-mono uppercase">{stateLabel[agent.state]}</span>
+        <span className="text-xs uppercase text-slate-500">{stateLabel[agent.state]}</span>
         {agent.duration && (
-          <span className="text-xs text-gray-600 font-mono ml-auto">{agent.duration}</span>
+          <span className="ml-auto font-mono text-xs text-slate-500">{agent.duration}</span>
         )}
       </div>
 
-      <div className="text-sm font-medium text-gray-200">{name}</div>
+      <div className="text-sm font-medium text-slate-900">{name}</div>
 
       {/* progress bar */}
       {agent.state === 'running' && <ProgressBar pct={agent.progress} />}
 
       {/* details */}
       {variant === 'detailed' && agent.outputSummary && (
-        <div className="mt-1 text-xs text-gray-500 font-mono">{agent.outputSummary}</div>
+        <div className="mt-1 text-xs text-slate-600">{agent.outputSummary}</div>
       )}
       {variant === 'detailed' && agent.details && (
-        <div className="text-xs text-gray-600 font-mono mt-0.5">{agent.details}</div>
+        <div className="mt-0.5 text-xs text-slate-500">{agent.details}</div>
       )}
 
       {/* compact output */}
       {variant === 'compact' && agent.outputSummary && (
-        <div className="text-xs text-gray-500 font-mono mt-1 truncate">{agent.outputSummary}</div>
+        <div className="mt-1 truncate text-xs text-slate-600">{agent.outputSummary}</div>
       )}
 
       {/* cost */}
       {agent.cost !== undefined && (
-        <div className="text-xs text-gray-600 font-mono mt-1">${agent.cost.toFixed(4)}</div>
+        <div className="mt-1 font-mono text-xs text-slate-500">${agent.cost.toFixed(4)}</div>
       )}
     </div>
   );

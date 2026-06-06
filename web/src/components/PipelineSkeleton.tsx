@@ -28,18 +28,18 @@ export default function PipelineSkeleton() {
   }, []);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 space-y-5">
+    <div data-testid="pipeline-skeleton" className="space-y-5 rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
       {/* header */}
       <div className="flex items-center gap-3">
-        <div className="w-4 h-4 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
-        <span className="text-gray-300 text-sm font-medium">正在规划分析流程...</span>
+        <div className="h-4 w-4 rounded-full border-2 border-teal-600 border-t-transparent animate-spin" />
+        <span className="text-sm font-medium text-slate-800">正在规划分析流程...</span>
       </div>
 
       {/* skeleton rows */}
       <div className="space-y-2.5">
         {ROWS.map((row, i) => (
           <div key={i} className="flex items-center gap-3">
-            <span className="text-xs text-gray-600 font-mono w-16 text-right shrink-0">
+            <span className="w-16 shrink-0 text-right text-xs text-slate-500">
               {row.label}
             </span>
             <div
@@ -53,7 +53,7 @@ export default function PipelineSkeleton() {
       {/* rotating status */}
       <p
         key={msgIdx}
-        className="text-xs text-gray-500 font-mono text-center animate-fadeIn"
+        className="text-center text-xs text-slate-500 animate-fadeIn"
       >
         {MESSAGES[msgIdx]}
       </p>

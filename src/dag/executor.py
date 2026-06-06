@@ -1,3 +1,5 @@
+"""这个模块负责把 DAG 节点交给对应 Agent 执行。"""
+
 from src.dag.models import DAGNode
 from src.knowledge_graph.store import GraphStore
 from src.llm_gateway.gateway import LLMGateway
@@ -43,12 +45,26 @@ class AgentExecutor:
         self._agent_cache: dict[str, type[BaseAgent]] = {}
 
     def _resolve_agent_class(self, agent_type: str) -> type[BaseAgent]:
+        """解析节点对应的 Agent 类，并把懒加载错误转成可读提示。"""
         if agent_type in self._agent_cache:
             return self._agent_cache[agent_type]
         import importlib
+        if agent_type not in _AGENT_IMPORT_MAP:
+            available = ", ".join(sorted(_AGENT_IMPORT_MAP))
+            raise RuntimeError(f"未知 Agent 类型：{agent_type}。可用类型：{available}")
         mod_path, cls_name = _AGENT_IMPORT_MAP[agent_type]
-        mod = importlib.import_module(mod_path)
-        cls = getattr(mod, cls_name)
+        try:
+            mod = importlib.import_module(mod_path)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Agent 导入失败：{agent_type}（{mod_path}.{cls_name}）"
+            ) from exc
+        try:
+            cls = getattr(mod, cls_name)
+        except AttributeError as exc:
+            raise RuntimeError(
+                f"Agent 类未找到：{agent_type}（{mod_path}.{cls_name}）"
+            ) from exc
         self._agent_cache[agent_type] = cls
         return cls
 

@@ -526,14 +526,14 @@ class TestDagExecutorErrors:
         await executor.execute(node)
 
     @pytest.mark.asyncio
-    async def test_unknown_agent_type_raises_keyerror(self, executor):
-        """Unregistered agent_type → KeyError from import map."""
+    async def test_unknown_agent_type_has_clear_error(self, executor):
+        """未注册 Agent 类型会给出可读错误。"""
         from src.dag.models import DAGNode
         node = DAGNode(
             node_id="bad", agent_type="NonExistentAgent",
             input_query={}, depends_on=[],
         )
-        with pytest.raises(KeyError):
+        with pytest.raises(RuntimeError, match="未知 Agent 类型"):
             executor._resolve_agent_class("NonExistentAgent")
 
     def test_build_task_populates_all_fields(self, executor):

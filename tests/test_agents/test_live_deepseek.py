@@ -22,8 +22,20 @@ from src.llm_gateway.gateway import LLMGateway
 from src.knowledge_graph.store import GraphStore
 from src.agents.tools.base import ToolRegistry
 from src.agents.tools.graph_tools import GraphQueryTool, GraphWriteTool
-from src.agents.tools.web_tools import WebSearchTool, WebScrapeTool
+from src.agents.tools.web_tools import WebSearchTool, WebScrapeTool, BatchWebScrapeTool
 from src.agents.tools.company_scope import CompanyScopeTool
+from src.agents.tools.api_tools import ThirdPartyAPITool
+from src.agents.tools.hackernews_tool import HackerNewsTool
+from src.agents.tools.github_tool import GitHubTool
+from src.agents.tools.news_tools import GoogleNewsTool
+from src.agents.tools.reddit_tool import RedditTool
+from src.agents.tools.tianyancha_tool import TianyanchaTool
+from src.agents.tools.tavily_tool import TavilySearchTool
+from src.agents.tools.app_store_tool import AppStoreTool
+from src.agents.tools.producthunt_tool import ProductHuntTool
+from src.agents.tools.wayback_tool import WaybackTool
+from src.agents.tools.google_trends_tool import GoogleTrendsTool
+from src.agents.tools.social_media_tool import SocialMediaTool
 from src.agents.source_discovery import SourceDiscoveryAgent
 from src.agents.collector import CollectorAgent
 from src.agents.data_enricher import DataEnricherAgent
@@ -52,10 +64,31 @@ def live_tools(live_store):
     tools = ToolRegistry()
     tools.register(GraphQueryTool, store=live_store)
     tools.register(GraphWriteTool, store=live_store)
-    tools.register(WebSearchTool)
     tools.register(WebScrapeTool)
+    tools.register(BatchWebScrapeTool)
+    tools.register(WebSearchTool)
+    tools.register(TavilySearchTool)
+    tools.register(ThirdPartyAPITool)
     tools.register(CompanyScopeTool)
+    tools.register(HackerNewsTool)
+    tools.register(GitHubTool)
+    tools.register(GoogleNewsTool)
+    tools.register(RedditTool)
+    tools.register(TianyanchaTool)
+    tools.register(AppStoreTool)
+    tools.register(ProductHuntTool)
+    tools.register(WaybackTool)
+    tools.register(GoogleTrendsTool)
+    tools.register(SocialMediaTool)
     return tools
+
+
+def safe_print_trace(i, t):
+    reasoning = str(t.reasoning).encode('ascii', errors='replace').decode('ascii')
+    action = str(t.action).encode('ascii', errors='replace').decode('ascii')
+    params = str(t.action_params).encode('ascii', errors='replace').decode('ascii')
+    res_summary = str(t.action_result_summary[:200] if t.action_result_summary else "N/A").encode('ascii', errors='replace').decode('ascii')
+    print(f"Step {i+1}: Thought={reasoning}\nAction={action} Params={params}\nResult={res_summary}\n")
 
 
 # ── P1: Single agent ReAct loop ──
@@ -112,6 +145,11 @@ async def test_p3_collector_with_live_llm(live_gateway, live_store, live_tools):
         "context": {},
     }
     output, traces = await agent.execute(task)
+    print(f"\n--- COLLECTOR TRACES ---")
+    for i, t in enumerate(traces):
+        safe_print_trace(i, t)
+    print(f"Output: {output}")
+    print(f"------------------------")
     assert output.status == "completed"
     assert output.summary, "Expected non-empty summary"
     print(f"\nP3-Collector PASS: {len(traces)} steps, summary={output.summary[:120]}")
@@ -136,6 +174,11 @@ async def test_p3_full_collection_chain(live_gateway, live_store, live_tools):
             "agent_type": name, "input_query": task_data, "context": {},
         }
         output, traces = await agent.execute(task)
+        print(f"\n--- {name} TRACES ---")
+        for i, t in enumerate(traces):
+            safe_print_trace(i, t)
+        print(f"Output: {output}")
+        print(f"----------------------")
         assert output.status == "completed", f"{name} failed: {output}"
         results.append((name, len(traces), output.summary[:120]))
         print(f"  {name}: {len(traces)} steps, summary={output.summary[:120]}")

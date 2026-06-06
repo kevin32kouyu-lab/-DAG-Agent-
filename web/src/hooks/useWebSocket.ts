@@ -13,6 +13,7 @@ export function useWebSocket(taskId: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     if (!taskId) return;
@@ -50,13 +51,17 @@ export function useWebSocket(taskId: string) {
       const jitter = Math.random() * 0.3 * base;
       const delay = base + jitter;
       reconnectAttempt.current += 1;
-      reconnectTimer.current = setTimeout(connect, delay);
+      reconnectTimer.current = setTimeout(() => connectRef.current(), delay);
     };
 
     ws.onerror = () => {
       ws.close();
     };
   }, [taskId]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     connect();

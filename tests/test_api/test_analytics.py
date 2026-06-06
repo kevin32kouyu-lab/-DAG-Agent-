@@ -2,16 +2,35 @@
 import pytest
 from fastapi.testclient import TestClient
 from src.api.app import app
-from src.api.routes.report import (
-    _build_scoring_data, _build_feature_data, _build_sentiment_data,
-    _build_pricing_data, _build_swot_data, _build_techstack_data,
-    _extract_metadata, _belongs_to_task,
+from src.api.analytics_builder import (
+    build_scoring_data as _build_scoring_data,
+    build_feature_data as _build_feature_data,
+    build_sentiment_data as _build_sentiment_data,
+    build_pricing_data as _build_pricing_data,
+    build_swot_data as _build_swot_data,
+    build_techstack_data as _build_techstack_data,
+    extract_metadata as _extract_metadata,
+    belongs_to_task as _belongs_to_task,
+    normalize_product_name as _normalize_product_name,
 )
+from src.dag.models import TaskDAG
+from src.knowledge_graph.models import (
+    FeatureNode, PricingModelNode, ReportSectionNode, SentimentNode,
+)
+from src.knowledge_graph.store import GraphStore
 
 client = TestClient(app)
 
 
 # ── helper unit tests ──
+
+def test_normalize_product_name():
+    assert _normalize_product_name("notion") == "Notion"
+    assert _normalize_product_name("Notion") == "Notion"
+    assert _normalize_product_name("Notion ") == "Notion"
+    assert _normalize_product_name(" slack ") == "Slack"
+    assert _normalize_product_name("ChatGPT") == "ChatGPT"
+    assert _normalize_product_name("") == "Unknown"
 
 class FakeNode:
     def __init__(self, **kwargs):
@@ -121,10 +140,132 @@ def test_belongs_to_task_by_metadata():
     assert _belongs_to_task(node, "t2", []) is False
 
 
-def test_belongs_to_task_by_product():
+def test_belongs_to_task_ignores_product_fallback():
     node = FakeNode(product="Slack", metadata={})
-    assert _belongs_to_task(node, "t1", ["Slack", "Teams"]) is True
+    assert _belongs_to_task(node, "t1", ["Slack", "Teams"]) is False
     assert _belongs_to_task(node, "t1", ["Discord"]) is False
+
+
+class FakeScheduler:
+    def __init__(self, targets=None):
+        self.targets = targets or []
+
+    def get_task_dag(self, task_id):
+        return TaskDAG(task_id=task_id, targets=self.targets)
+
+
+def test_analytics_uses_only_current_task_structured_nodes(tmp_path):
+    """同名产品的历史节点不能混入当前任务图表。"""
+    from src.api.analytics_builder import build_analytics_payload
+
+    store = GraphStore(db_path=str(tmp_path / "kg.db"))
+    store.create_node(FeatureNode(
+        product="Figma", name="Old Feature", category="UI",
+        maturity="ga", differentiation="advantage",
+        metadata={"task_id": "old_task"},
+    ))
+    store.create_node(FeatureNode(
+        product="Figma", name="Current Feature", category="UI",
+        maturity="ga", differentiation="advantage",
+        metadata={"task_id": "current_task"},
+    ))
+    store.create_node(PricingModelNode(
+        product="Figma", strategy="per-seat", target_segment="teams",
+        value_score=0.9, metadata={"task_id": "old_task"},
+    ))
+    store.create_node(PricingModelNode(
+        product="Figma", strategy="per-seat", target_segment="teams",
+        value_score=0.7, metadata={"task_id": "current_task"},
+    ))
+
+    payload = build_analytics_payload(store, FakeScheduler(["Figma"]), "current_task")
+
+    features = payload["features"]["features"]
+    assert len(features) == 1
+    assert features[0]["feature_name"] == "Current Feature"
+    assert payload["pricing"]["value_scores"] == [{
+        "product": "Figma",
+        "value_score": 0.7,
+        "strategy": "per-seat",
+        "target_segment": "teams",
+    }]
+    assert payload["data_source"] == "structured"
+
+
+def test_analytics_builds_fallback_from_current_report_section(tmp_path):
+    """没有结构化节点时，从当前任务报告正文解析出图表兜底数据。"""
+    from src.api.analytics_builder import build_analytics_payload
+
+    store = GraphStore(db_path=str(tmp_path / "kg.db"))
+    store.create_node(ReportSectionNode(
+        section="完整报告",
+        order=0,
+        metadata={"task_id": "report_task"},
+        content=(
+            "# Competitive Analysis of Notion, Figma, Sketch\n\n"
+            "## Feature Analysis\n\n"
+            "| Feature | Notion | Figma | Sketch |\n"
+            "|---------|--------|-------|--------|\n"
+            "| Documentation | Advantage | Disadvantage | Disadvantage |\n"
+            "| Real-time Collaboration | Parity | Advantage | Disadvantage |\n\n"
+            "## Pricing Analysis\n\n"
+            "| Plan | Notion | Figma | Sketch |\n"
+            "|------|--------|-------|--------|\n"
+            "| Free | Free | Free | N/A |\n"
+            "| Pro | $10/mo | $12/editor/mo | $99/year |\n\n"
+            "## Sentiment Analysis\n\n"
+            "Figma overall sentiment score 0.6. Notion sentiment score 0.7.\n\n"
+            "## SWOT Analysis\n\n"
+            "### Notion\n"
+            "**Strengths:** Flexible, strong community.\n"
+            "**Weaknesses:** Performance issues.\n"
+            "**Opportunities:** AI features.\n"
+            "**Threats:** Microsoft Loop.\n\n"
+            "### Figma\n"
+            "**Strengths:** Real-time collaboration.\n"
+            "**Weaknesses:** Limited offline.\n"
+            "**Opportunities:** AI design.\n"
+            "**Threats:** Penpot.\n"
+        ),
+    ))
+
+    payload = build_analytics_payload(
+        store, FakeScheduler(["Notion", "Figma", "Sketch"]), "report_task"
+    )
+
+    assert payload["data_source"] == "report_fallback"
+    assert payload["warnings"]
+    assert payload["features"]["features"][0]["feature_name"] == "Documentation"
+    assert len(payload["pricing"]["plans"]) == 5
+    assert {row["product"] for row in payload["pricing"]["plans"]} == {"Notion", "Figma", "Sketch"}
+    assert len(payload["swot"]) == 2
+    assert payload["scoring"]
+
+
+def test_analytics_derives_scoring_when_scoring_nodes_missing(tmp_path):
+    """当前任务没有 ScoringNode 时，也能从结构化节点派生雷达评分。"""
+    from src.api.analytics_builder import build_analytics_payload
+
+    store = GraphStore(db_path=str(tmp_path / "kg.db"))
+    store.create_node(FeatureNode(
+        product="Notion", name="Docs", category="UI",
+        maturity="ga", differentiation="advantage",
+        metadata={"task_id": "score_task"},
+    ))
+    store.create_node(PricingModelNode(
+        product="Notion", strategy="freemium", target_segment="teams",
+        value_score=0.72, metadata={"task_id": "score_task"},
+    ))
+    store.create_node(SentimentNode(
+        product="Notion", topic="overall", sentiment_score=0.6,
+        metadata={"task_id": "score_task"},
+    ))
+
+    payload = build_analytics_payload(store, FakeScheduler(["Notion"]), "score_task")
+
+    dimensions = {row["dimension"] for row in payload["scoring"]}
+    assert {"features", "pricing", "sentiment"}.issubset(dimensions)
+    assert all(row["product"] == "Notion" for row in payload["scoring"])
 
 
 # ── endpoint integration tests ──

@@ -1,7 +1,12 @@
+"""报告生成 Agent，负责把图谱分析结果整理成最终报告。"""
+
+import logging
 from typing import Any
 from src.agents.base import BaseAgent
 from src.agents.contracts import ReportOutput
 from src.agents.registry import agent_registry
+
+logger = logging.getLogger(__name__)
 
 WRITER_PROMPT = """You are a Report Generator. Your ONLY job: read available data, then produce a complete competitive analysis report in markdown about the TARGET product(s) specified in the task input.
 
@@ -57,8 +62,7 @@ class WriterAgent(BaseAgent):
         try:
             return await super().execute(task)
         except Exception:
-            import logging
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "Writer agent failed, generating fallback report", exc_info=True
             )
             # context.init is already called by super().execute() first line;
@@ -82,55 +86,74 @@ class WriterAgent(BaseAgent):
         return await super()._think(observation)
 
     def _build_output(self, result: dict[str, Any]) -> Any:
-        # Read ReportSection nodes from graph to assemble the report.
-        section_nodes = self.store.query_nodes(node_type="ReportSection", layer=3)
-        sections: list[dict] = []
-        md_parts: list[str] = []
+        """从 LLM 结果构建报告输出。LLM 生成的 report_markdown 优先；
+        图谱中的 ReportSection 节点仅在 LLM 未生成有用内容时作为备选拼接。"""
+        import json
 
         task_id = self.context.task_id
+        sections: list[dict] = []
+        report_markdown = ""
 
-        for node in sorted(section_nodes, key=lambda n: getattr(n, "order", 0)):
-            metadata = getattr(node, "metadata", {}) or {}
-            if isinstance(metadata, str):
-                try:
-                    import json
-                    metadata = json.loads(metadata)
-                except (json.JSONDecodeError, TypeError):
-                    metadata = {}
-            if metadata and metadata.get("task_id") != task_id:
-                continue
-            sec = getattr(node, "section", "")
-            content = getattr(node, "content", "")
-            order = getattr(node, "order", 0)
-            sections.append({"section": sec, "content": content, "order": order})
-            if sec and content:
-                md_parts.append(f"## {sec}\n\n{content}")
-
-        report_markdown = "\n\n".join(md_parts)
-
-        # Fallback 1: use LLM's finalize result.report_markdown
-        if not report_markdown and result:
+        # ── 第一优先级：LLM 生成的 report_markdown ──
+        if result:
             raw = result.get("report_markdown", "")
             if len(raw) >= 200:
                 report_markdown = self._fix_product_names(raw)
                 sections = [{"section": "完整报告", "content": report_markdown, "order": 0}]
 
-        # Fallback 2: use LLM summary, but only if it's a substantial report
+        # ── 第二优先级：LLM 的 summary（如果有实质内容）──
         if not report_markdown and result:
             raw = result.get("summary", "") or str(result)
             if len(raw) >= 200:
                 report_markdown = self._fix_product_names(raw)
                 sections = [{"section": "完整报告", "content": report_markdown, "order": 0}]
 
-        # Fallback 3: hardcoded — generate minimal report from product name
+        # ── 第三优先级：图谱中已有的 ReportSection 节点 ──
+        if not report_markdown:
+            try:
+                section_nodes = self.store.query_nodes(node_type="ReportSection", layer=3)
+            except Exception as e:
+                logger.warning(
+                    "Writer 图谱报告章节读取失败，已使用兜底报告: task_id=%s, reason=%s",
+                    task_id,
+                    e,
+                )
+                section_nodes = []
+            graph_sections: list[dict] = []
+            seen = set()
+            for node in sorted(section_nodes, key=lambda n: getattr(n, "order", 0)):
+                meta = getattr(node, "metadata", {}) or {}
+                if isinstance(meta, str):
+                    try:
+                        meta = json.loads(meta)
+                    except (json.JSONDecodeError, TypeError):
+                        meta = {}
+                if meta.get("task_id") != task_id:
+                    continue
+                sec = getattr(node, "section", "")
+                content = getattr(node, "content", "")
+                if sec in seen:
+                    continue  # 去重
+                seen.add(sec)
+                order = getattr(node, "order", 0)
+                graph_sections.append({"section": sec, "content": content, "order": order})
+            if graph_sections:
+                sections = graph_sections
+                # 用图谱节点拼接 markdown（仅备选路径使用）
+                report_markdown = "\n\n".join(
+                    f"## {s['section']}\n\n{s['content']}" for s in graph_sections
+                )
+
+        # ── 第四优先级：硬编码回退报告 ──
         if not report_markdown:
             report_markdown = self._generate_fallback_report()
             sections = [{"section": "概述", "content": report_markdown, "order": 0}]
 
         summary = result.get("summary", "Report generated") if result else "Report generated"
 
-        # Persist ReportSection nodes to knowledge graph for Layer 1 API
-        self._persist_sections(sections, task_id)
+        # 仅在使用了 LLM 输出时持久化到图谱（避免把图谱旧数据重复写入）
+        if result and result.get("report_markdown", ""):
+            self._persist_sections(sections, task_id)
 
         return ReportOutput(
             agent_type=self.agent_type,
@@ -144,8 +167,22 @@ class WriterAgent(BaseAgent):
 
     def _persist_sections(self, sections: list[dict], task_id: str) -> None:
         import logging
+        import json
         logger = logging.getLogger(__name__)
         from src.knowledge_graph.models import ReportSectionNode
+
+        # 先删除该 task 下所有旧的 ReportSection，避免多次运行后指数级重复
+        all_sections = self.store.query_nodes(node_type="ReportSection", layer=3)
+        for node in all_sections:
+            try:
+                meta = getattr(node, "metadata", {}) or {}
+                if isinstance(meta, str):
+                    meta = json.loads(meta)
+            except (json.JSONDecodeError, TypeError):
+                meta = {}
+            if meta.get("task_id") == task_id:
+                self.store.delete_node(node.id)
+
         for s in sections:
             try:
                 node = ReportSectionNode(

@@ -22,6 +22,10 @@ default_sources:
     - 官网
     - G2
     - ProductHunt
+    - HackerNews
+    - GitHub
+    - GoogleNews
+    - Reddit
   excluded: []
   min_credibility: 0.5
 
@@ -43,3 +47,61 @@ degradation_tiers:
     primary: "httpx 直接请求"
     tier1: "Google 缓存 / Wayback Machine"
     tier2: "第三方页面产品描述替代"
+  HackerNews:
+    primary: "Algolia HN Search API + Firebase API"
+    tier1: "搜索引擎 site:news.ycombinator.com 片段"
+    tier2: "跳过"
+  GitHub:
+    primary: "GitHub REST API (60 req/h 匿名 / 5000 req/h token)"
+    tier1: "GitHub 公开页面 title/description 抓取"
+    tier2: "搜索引擎缓存摘要"
+  GoogleNews:
+    primary: "Google News RSS (免费, 100条/查询)"
+    tier1: "DuckDuckGo news 搜索"
+    tier2: "跳过"
+
+# 需要注册 API key 的付费/半付费数据源
+pending_paid_sources:
+  - name: SimilarWeb
+    note: "仅 Enterprise 方案提供 API 访问，无免费 tier。不能用。"
+  - name: Crunchbase
+    note: "需要付费 API 方案。无免费 tier。"
+  - name: 天眼查
+    note: "企业基本信息 ¥0.15/次，司法风险 ¥1.50/次。需注册+充值。已封装为 tianyancha_tool.py。"
+  - name: 企查查
+    note: "类似天眼查，¥0.10/次起。新用户 1000次/月试用 30 天。"
+  - name: Stack Overflow / Stack Exchange
+    note: "匿名 300 req/day；注册免费 app key 可升至 10,000 req/day。"
+  - name: Reddit OAuth API
+    note: "$0.24/1000 请求；但 .json 公共端点仍免费可用（已封装为 reddit_tool.py）。"
+  - name: 七麦数据
+    note: "App Store/Android 排名数据。无官方免费 API，需逆向爬虫。"
+
+# 国内竞品分析 — 免费渠道汇总
+china_free_sources:
+  enterprise_data:
+    - name: 国家企业信用信息公示系统
+      url: https://www.gsxt.gov.cn/
+      cost: 完全免费
+      method: web_scrape 公开页面 (需处理验证码)
+    - name: 各省公共数据开放平台
+      url: https://data.sd.gov.cn/ (山东, 各省均有)
+      cost: 完全免费 (需申请 API 白名单)
+  news_and_media:
+    - name: 36氪 / 虎嗅 / 钛媒体
+      method: Google News RSS 搜索 site:36kr.com
+      cost: 免费
+    - name: 百度资讯搜索
+      method: web_search 工具
+      cost: 免费
+  app_data:
+    - name: 七麦数据 (qimai.cn)
+      method: 免费网页版查看
+      cost: 基础版免费, 无 API
+  discussion:
+    - name: 知乎 / 脉脉
+      method: web_search site:zhihu.com
+      cost: 免费
+    - name: Reddit (中文社区)
+      method: reddit_tool.py
+      cost: 免费

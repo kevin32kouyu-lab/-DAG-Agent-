@@ -1,7 +1,10 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import logging
+
 from src.api.deps import get_scheduler
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 active_connections: dict[str, list[WebSocket]] = {}
 _task_costs: dict[str, float] = {}
@@ -27,11 +30,19 @@ def _cleanup_task(task_id: str, delay: float = 300.0) -> None:
 
 
 async def _broadcast(task_id: str, event: dict):
+    failed_connections = []
     for conn in active_connections.get(task_id, []):
         try:
             await conn.send_json(event)
-        except Exception:
-            pass
+        except Exception as exc:
+            failed_connections.append(conn)
+            logger.warning("WebSocket 广播失败: task_id=%s, reason=%s", task_id, exc)
+
+    if failed_connections:
+        active_connections[task_id] = [
+            conn for conn in active_connections.get(task_id, [])
+            if conn not in failed_connections
+        ]
 
 
 def _ensure_callbacks_registered() -> None:

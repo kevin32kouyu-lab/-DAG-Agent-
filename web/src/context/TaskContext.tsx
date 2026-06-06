@@ -1,4 +1,7 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+// 这个组件提供任务上下文状态，具体上下文定义和 hook 拆在独立文件中。
+
+import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { TaskContext } from './taskContextValue';
 import type { HistoryTask } from '../types';
 
 function loadHistory(): HistoryTask[] {
@@ -11,26 +14,6 @@ function loadHistory(): HistoryTask[] {
 }
 
 const MAX_HISTORY = 20;
-
-interface TaskContextValue {
-  activeTaskId: string | null;
-  setActiveTaskId: (id: string) => void;
-  taskHistory: HistoryTask[];
-  addToHistory: (task: HistoryTask) => void;
-  updateHistoryTask: (id: string, patch: Partial<HistoryTask>) => void;
-  wsConnected: boolean;
-  setWsConnected: (connected: boolean) => void;
-}
-
-const TaskContext = createContext<TaskContextValue>({
-  activeTaskId: null,
-  setActiveTaskId: () => {},
-  taskHistory: [],
-  addToHistory: () => {},
-  updateHistoryTask: () => {},
-  wsConnected: false,
-  setWsConnected: () => {},
-});
 
 export function TaskContextProvider({ children }: { children: ReactNode }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -61,8 +44,4 @@ export function TaskContextProvider({ children }: { children: ReactNode }) {
       {children}
     </TaskContext.Provider>
   );
-}
-
-export function useTaskContext() {
-  return useContext(TaskContext);
 }

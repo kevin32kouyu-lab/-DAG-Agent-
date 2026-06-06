@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { useTaskContext } from '../context/TaskContext';
-import { useToast } from '../components/Toast';
+import { useTaskContext } from '../hooks/useTaskContext';
+import { useToast } from '../hooks/useToast';
 import AgentCard from '../components/AgentCard';
 import DAGGraph from '../components/DAGGraph';
 import PipelineSkeleton from '../components/PipelineSkeleton';
@@ -50,13 +50,6 @@ export default function Monitor() {
     setWsConnected(connectionStatus === 'connected');
     return () => { setWsConnected(false); };
   }, [connectionStatus, setWsConnected]);
-
-  /* phase transition: connecting -> planning */
-  useEffect(() => {
-    if (connectionStatus === 'connected' && phase === 'connecting') {
-      setPhase('planning');
-    }
-  }, [connectionStatus, phase]);
 
   const processedCount = useRef(0);
   const completionNotified = useRef(false);
@@ -204,14 +197,15 @@ export default function Monitor() {
     }
 
     processedCount.current = events.length;
-  }, [events]);
+  }, [events, toast]);
 
   /* grouping */
   const groups = useMemo(() => groupAgents(agents), [agents]);
-  const agentList = Array.from(agents.values());
+  const agentList = useMemo(() => Array.from(agents.values()), [agents]);
   const completed = agentList.filter(a => a.state === 'completed').length;
   const running = agentList.filter(a => a.state === 'running').length;
   const failed = agentList.filter(a => a.state === 'failed').length;
+  const displayPhase = phase === 'connecting' && connectionStatus === 'connected' ? 'planning' : phase;
 
   /* update history when task finishes — guard with ref to prevent re-triggering */
   useEffect(() => {
@@ -227,23 +221,23 @@ export default function Monitor() {
       updateHistoryTask(id, { status: 'failed', duration: '失败' });
       toast('部分节点执行失败', 'error');
     }
-  }, [completed, failed, agentList.length, id, updateHistoryTask, toast]);
+  }, [agentList, id, updateHistoryTask, toast]);
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6 animate-pageEnter">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-100">Agent 协作状态</h1>
-          <p className="text-gray-500 text-sm font-mono">任务: {id}</p>
+          <h1 className="text-xl font-bold text-slate-950">Agent 协作状态</h1>
+          <p className="text-sm text-slate-500">任务: <span className="font-mono">{id}</span></p>
         </div>
-        <div className="flex gap-4 text-sm font-mono">
-          <span className="text-green-400">{completed} 完成</span>
-          <span className="text-amber-400">{running} 运行中</span>
-          {failed > 0 && <span className="text-red-400">{failed} 失败</span>}
-          <span className="text-gray-500">{agentList.length - completed - running - failed} 等待</span>
+        <div className="flex gap-4 text-sm">
+          <span className="text-green-700">{completed} 完成</span>
+          <span className="text-amber-700">{running} 运行中</span>
+          {failed > 0 && <span className="text-red-700">{failed} 失败</span>}
+          <span className="text-slate-500">{agentList.length - completed - running - failed} 等待</span>
           <span className={`w-2 h-2 rounded-full self-center ${connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-red-500'}`} />
-          <span className="text-xs text-gray-600 self-center">
+          <span className="self-center text-xs text-slate-500">
             {connectionStatus === 'connected' ? 'WS 已连接' : connectionStatus === 'connecting' ? '连接中...' : 'WS 断开'}
           </span>
         </div>
@@ -253,11 +247,11 @@ export default function Monitor() {
       {groups.map(({ group, agents: groupAgents }) => (
         <div key={group.role} className="space-y-2">
           <div className="flex items-center gap-2">
-            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">{group.role}</h3>
+            <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">{group.role}</h3>
             {group.agentTypes.length > 1 && (
-              <span className="text-xs text-gray-600 font-mono">(×{groupAgents.length})</span>
+              <span className="font-mono text-xs text-slate-400">(×{groupAgents.length})</span>
             )}
-            <span className="text-xs text-gray-600">— {group.description}</span>
+            <span className="text-xs text-slate-500">— {group.description}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {groupAgents.map(a => (
@@ -272,12 +266,12 @@ export default function Monitor() {
       ))}
 
       {/* Planning / Connecting state */}
-      {phase === 'planning' && agentList.length === 0 && (
+      {displayPhase === 'planning' && agentList.length === 0 && (
         <PipelineSkeleton />
       )}
 
-      {phase === 'connecting' && (
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-12 text-center text-gray-600 font-mono text-sm">
+      {displayPhase === 'connecting' && (
+        <div className="rounded-lg border border-slate-200 bg-white p-12 text-center text-sm text-slate-500 shadow-sm">
           <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-2" />
           正在连接 WebSocket...
         </div>
@@ -285,18 +279,18 @@ export default function Monitor() {
 
       {/* Log stream */}
       {logs.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <button
             onClick={() => setShowLogs(!showLogs)}
-            className="w-full px-4 py-2 flex items-center justify-between text-xs text-gray-500 font-mono hover:bg-gray-800/50"
+            className="flex w-full items-center justify-between px-4 py-2 text-xs text-slate-500 hover:bg-slate-50"
           >
             <span>实时日志流 ({logs.length} 条)</span>
             <span>{showLogs ? '▴ 收起' : '▾ 展开'}</span>
           </button>
           {showLogs && (
-            <div className="max-h-48 overflow-auto border-t border-gray-800 p-2 space-y-0.5 font-mono text-xs">
+            <div className="max-h-48 space-y-0.5 overflow-auto border-t border-slate-200 bg-slate-50 p-2 font-mono text-xs">
               {logs.map((l, i) => (
-                <div key={i} className="text-gray-500 hover:text-gray-300 truncate">{l}</div>
+                <div key={i} className="truncate text-slate-500 hover:text-slate-800">{l}</div>
               ))}
             </div>
           )}
@@ -307,12 +301,12 @@ export default function Monitor() {
       <DAGGraph nodes={dagNodes} />
 
       {/* Bottom status bar */}
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 flex items-center justify-between font-mono text-sm">
-        <span className="text-gray-500">资源消耗</span>
+      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm">
+        <span className="text-slate-500">资源消耗</span>
         <div className="flex gap-6">
-          <span className="text-gray-400">Token: {totalTokens > 0 ? totalTokens.toLocaleString() : '—'}</span>
-          <span className="text-gray-300">成本: ${totalCost.toFixed(4)}</span>
-          <span className="text-gray-400">采集: {pagesCollected > 0 ? `${pagesCollected} 页` : '—'}</span>
+          <span className="text-slate-500">Token: <span className="font-mono">{totalTokens > 0 ? totalTokens.toLocaleString() : '—'}</span></span>
+          <span className="text-slate-700">成本: <span className="font-mono">${totalCost.toFixed(4)}</span></span>
+          <span className="text-slate-500">采集: <span className="font-mono">{pagesCollected > 0 ? `${pagesCollected} 页` : '—'}</span></span>
         </div>
       </div>
     </div>

@@ -1,4 +1,7 @@
 import asyncio
+import json
+import logging
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
@@ -7,25 +10,17 @@ from src.api.deps import get_store, get_gateway, get_scheduler, get_audit_logger
 from src.agents.orchestrator import OrchestratorAgent
 from src.agents.tools.base import ToolRegistry
 from src.agents.tools.graph_tools import GraphQueryTool, GraphWriteTool
-from src.agents.tools.web_tools import WebScrapeTool, WebSearchTool
+from src.agents.tools.web_tools import WebScrapeTool, WebSearchTool, BatchWebScrapeTool
 from src.agents.tools.api_tools import ThirdPartyAPITool
 from src.agents.tools.company_scope import CompanyScopeTool
-from src.agents.tools.hackernews_tool import HackerNewsTool
-from src.agents.tools.github_tool import GitHubTool
-from src.agents.tools.news_tools import GoogleNewsTool
-from src.agents.tools.reddit_tool import RedditTool
-from src.agents.tools.tianyancha_tool import TianyanchaTool
 from src.agents.tools.tavily_tool import TavilySearchTool
-from src.agents.tools.app_store_tool import AppStoreTool
-from src.agents.tools.producthunt_tool import ProductHuntTool
 from src.agents.tools.wayback_tool import WaybackTool
-from src.agents.tools.google_trends_tool import GoogleTrendsTool
-from src.agents.tools.social_media_tool import SocialMediaTool
 from src.dag.compiler import WorkflowCompileRequest, WorkflowCompiler
 from src.dag.executor import AgentExecutor
 from src.dag.models import NodeState
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class CreateTaskRequest(BaseModel):
@@ -53,25 +48,42 @@ class TaskResponse(BaseModel):
     ws_endpoint: str = ""
 
 
-def _build_tools(store):
+def _build_tools(store, req: CreateTaskRequest | None = None):
+    """按任务场景注册工具，默认只启用稳定的核心工具。"""
     tools = ToolRegistry()
     tools.register(GraphQueryTool, store=store)
     tools.register(GraphWriteTool, store=store)
     tools.register(WebScrapeTool)
+    tools.register(BatchWebScrapeTool)
     tools.register(WebSearchTool)
     tools.register(TavilySearchTool)
     tools.register(ThirdPartyAPITool)
     tools.register(CompanyScopeTool)
-    tools.register(HackerNewsTool)
-    tools.register(GitHubTool)
-    tools.register(GoogleNewsTool)
-    tools.register(RedditTool)
-    tools.register(TianyanchaTool)
-    tools.register(AppStoreTool)
-    tools.register(ProductHuntTool)
     tools.register(WaybackTool)
-    tools.register(GoogleTrendsTool)
-    tools.register(SocialMediaTool)
+
+    if req and req.collection_depth == "deep":
+        from src.agents.tools.github_tool import GitHubTool
+        from src.agents.tools.google_trends_tool import GoogleTrendsTool
+        from src.agents.tools.hackernews_tool import HackerNewsTool
+        from src.agents.tools.news_tools import GoogleNewsTool
+        from src.agents.tools.producthunt_tool import ProductHuntTool
+        from src.agents.tools.reddit_tool import RedditTool
+        from src.agents.tools.social_media_tool import SocialMediaTool
+        from src.agents.tools.tianyancha_tool import TianyanchaTool
+
+        tools.register(HackerNewsTool)
+        tools.register(GitHubTool)
+        tools.register(GoogleNewsTool)
+        tools.register(RedditTool)
+        tools.register(ProductHuntTool)
+        tools.register(GoogleTrendsTool)
+        tools.register(SocialMediaTool)
+        tools.register(TianyanchaTool)
+
+        if req.industry == "app":
+            from src.agents.tools.app_store_tool import AppStoreTool
+            tools.register(AppStoreTool)
+
     return tools
 
 
@@ -84,6 +96,29 @@ def _compile_template_dag(task_id: str, req: CreateTaskRequest):
         collection_depth=req.collection_depth,
         schema=req.model_dump(),
     ))
+
+
+def _persist_task_targets(task_id: str, targets: list[str], targets_file: str | Path = "data/task_targets.json") -> None:
+    """保存任务目标产品，供服务重载后恢复图表产品名。"""
+    path = Path(targets_file)
+    existing_targets: dict = {}
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(existing, dict):
+                existing_targets = existing
+            else:
+                logger.warning("任务目标缓存格式不是对象，已重建: %s", path)
+        except Exception as exc:
+            logger.warning("任务目标缓存读取失败，已重建: %s，原因: %s", path, exc)
+
+    existing_targets[task_id] = targets
+    try:
+        path.write_text(json.dumps(existing_targets, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as exc:
+        logger.warning("任务目标缓存写入失败: %s，原因: %s", path, exc)
 
 
 async def _plan_and_execute(task_id: str, req: CreateTaskRequest, store, gateway, tools):
@@ -148,7 +183,9 @@ async def create_task(req: CreateTaskRequest):
     task_id = f"task_{len(req.targets)}_{uuid4().hex[:8]}"
     store = get_store()
     gateway = get_gateway()
-    tools = _build_tools(store)
+    tools = _build_tools(store, req)
+
+    _persist_task_targets(task_id, req.targets)
 
     asyncio.create_task(_plan_and_execute(task_id, req, store, gateway, tools))
 
@@ -186,8 +223,92 @@ async def get_task(task_id: str):
     }
 
 
+class SourceListResponse(BaseModel):
+    task_id: str
+    sources: list[str]
+
+
+class ApproveSourcesRequest(BaseModel):
+    urls: list[str]
+
+
 @router.post("/task/{task_id}/release-checkpoint")
 async def release_checkpoint(task_id: str):
     scheduler = get_scheduler()
     scheduler.release_checkpoint()
     return {"task_id": task_id, "checkpoint": "released"}
+
+
+@router.get("/task/{task_id}/sources", response_model=SourceListResponse)
+async def get_task_sources(task_id: str):
+    scheduler = get_scheduler()
+    dag = scheduler.get_task_dag(task_id)
+    if dag is None:
+        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+    
+    urls_set = set()
+    import re
+    
+    # 1. Try to extract from SourceDiscovery node's _output_data or context
+    for node in dag.nodes:
+        if node.agent_type == "SourceDiscovery":
+            output_data = node.context.get("_output_data", {})
+            if output_data:
+                # Helper function to recursively extract urls from any nested structures
+                def extract_urls(val):
+                    if isinstance(val, str):
+                        for match in re.finditer(r'https?://[^\s,\)\}\]\'"]+', val):
+                            urls_set.add(match.group(0))
+                    elif isinstance(val, list):
+                        for item in val:
+                            extract_urls(item)
+                    elif isinstance(val, dict):
+                        for k, v in val.items():
+                            if k == "url" and isinstance(v, str):
+                                urls_set.add(v)
+                            else:
+                                extract_urls(v)
+                extract_urls(output_data)
+    
+    # 2. Extract SourceInfo nodes from knowledge graph
+    store = get_store()
+    nodes = store.query_nodes(node_type="SourceInfo")
+    for node in nodes:
+        task_meta = node.metadata.get("task_id")
+        if task_meta == task_id or not task_meta:
+            if hasattr(node, "url") and node.url:
+                urls_set.add(node.url)
+            elif isinstance(node.properties, dict) and "url" in node.properties:
+                urls_set.add(node.properties["url"])
+
+    return SourceListResponse(
+        task_id=task_id,
+        sources=sorted(list(urls_set))
+    )
+
+
+@router.post("/task/{task_id}/sources/approve")
+async def approve_sources(task_id: str, req: ApproveSourcesRequest):
+    scheduler = get_scheduler()
+    dag = scheduler.get_task_dag(task_id)
+    if dag is None:
+        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+    
+    # 1. Update the collector node's input_query with the approved URLs
+    collector_node = None
+    for node in dag.nodes:
+        if node.node_id == "collector" or node.agent_type == "Collector":
+            collector_node = node
+            break
+            
+    if collector_node is None:
+        raise HTTPException(status_code=404, detail="Collector node not found in DAG")
+        
+    collector_node.input_query["urls"] = req.urls
+    if "targets" not in collector_node.input_query or not collector_node.input_query["targets"]:
+        collector_node.input_query["targets"] = dag.targets
+        
+    # 2. Release checkpoint to resume scheduler
+    scheduler.release_checkpoint()
+    
+    return {"task_id": task_id, "status": "approved", "urls_count": len(req.urls)}

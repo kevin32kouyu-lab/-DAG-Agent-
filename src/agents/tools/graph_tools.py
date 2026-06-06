@@ -33,21 +33,40 @@ class GraphQueryTool(ToolBase):
         "node_type": {"type": "string", "description": "Node type to filter by"},
         "layer": {"type": "integer", "description": "Layer to filter by (1=raw, 2=analysis, 3=synthesis)"},
         "node_id": {"type": "string", "description": "Specific node ID to retrieve"},
+        "include_all": {"type": "boolean", "description": "Set true to bypass task_id filtering for debugging."},
     }
 
     def __init__(self, store: GraphStore):
         self.store = store
 
     async def execute(self, **kwargs) -> dict[str, Any]:
+        task_id = kwargs.get("_task_id", "")
+        include_all = bool(kwargs.get("include_all", False))
         node_id = kwargs.get("node_id")
         if node_id:
             node = self.store.get_node(node_id)
+            if node and task_id and not include_all and not self._belongs_to_task(node, task_id):
+                return {"nodes": []}
             return {"nodes": [node.model_dump(mode="json")] if node else []}
 
         node_type = kwargs.get("node_type")
         layer = kwargs.get("layer")
         nodes = self.store.query_nodes(node_type=node_type, layer=layer)
+        if task_id and not include_all:
+            nodes = [n for n in nodes if self._belongs_to_task(n, task_id)]
         return {"nodes": [n.model_dump(mode="json") for n in nodes], "count": len(nodes)}
+
+    @staticmethod
+    def _belongs_to_task(node, task_id: str) -> bool:
+        """按任务隔离图谱查询，避免 Agent 读取历史任务残留。"""
+        metadata = getattr(node, "metadata", {}) or {}
+        if isinstance(metadata, str):
+            try:
+                import json
+                metadata = json.loads(metadata)
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+        return metadata.get("task_id") == task_id
 
 
 class GraphWriteTool(ToolBase):
@@ -74,6 +93,10 @@ class GraphWriteTool(ToolBase):
             cls = NODE_TYPE_MAP.get(node_type[:-4])
         if cls is None:
             return {"error": f"Unknown node type: '{node_type}'. Valid types: {list(NODE_TYPE_MAP.keys())}"}
+
+        # Defensive normalization: map 'content' to 'text' if the target model expects 'text'
+        if "content" in data and "text" not in data and "text" in cls.model_fields:
+            data["text"] = data.pop("content")
 
         agent_type = kwargs.get("_agent_type", "")
         if agent_type:

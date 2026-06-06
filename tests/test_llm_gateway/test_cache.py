@@ -1,10 +1,11 @@
 import pytest
+import sqlite3
 from src.llm_gateway.cache import SemanticCache
 
 
 @pytest.fixture
-def cache():
-    return SemanticCache(ttl_seconds=3600)
+def cache(tmp_path):
+    return SemanticCache(ttl_seconds=3600, db_path=str(tmp_path / "cache.db"))
 
 
 def test_cache_hit_same_input(cache):
@@ -49,3 +50,42 @@ def test_cache_ttl_not_expired():
     cache = SemanticCache(ttl_seconds=3600)
     cache.set("p", "s", [], "r")
     assert cache.get("p", "s", []) == "r"
+
+
+def test_cache_logs_init_failure(monkeypatch, caplog):
+    def fail_makedirs(*_args, **_kwargs):
+        raise OSError("directory unavailable")
+
+    monkeypatch.setattr("src.llm_gateway.cache.os.makedirs", fail_makedirs)
+    caplog.set_level("WARNING", logger="src.llm_gateway.cache")
+
+    SemanticCache(ttl_seconds=3600, db_path="data/cache.db")
+
+    assert "缓存初始化失败" in caplog.text
+    assert "directory unavailable" in caplog.text
+
+
+def test_cache_logs_disk_get_failure(cache, monkeypatch, caplog):
+    def fail_connect(*_args, **_kwargs):
+        raise sqlite3.OperationalError("disk unavailable")
+
+    monkeypatch.setattr("src.llm_gateway.cache.sqlite3.connect", fail_connect)
+    caplog.set_level("WARNING", logger="src.llm_gateway.cache")
+
+    assert cache.get("missing", "system", []) is None
+
+    assert "缓存读取失败" in caplog.text
+    assert "disk unavailable" in caplog.text
+
+
+def test_cache_logs_disk_set_failure(cache, monkeypatch, caplog):
+    def fail_connect(*_args, **_kwargs):
+        raise sqlite3.OperationalError("disk unavailable")
+
+    monkeypatch.setattr("src.llm_gateway.cache.sqlite3.connect", fail_connect)
+    caplog.set_level("WARNING", logger="src.llm_gateway.cache")
+
+    cache.set("prompt", "system", [], "response")
+
+    assert "缓存写入失败" in caplog.text
+    assert "disk unavailable" in caplog.text

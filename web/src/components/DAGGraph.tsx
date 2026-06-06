@@ -21,12 +21,12 @@ const LAYER_MAP: Record<string, number> = {
 };
 
 const STATE_COLORS: Record<string, string> = {
-  completed: '#22c55e',
-  running: '#f59e0b',
-  failed: '#ef4444',
+  completed: '#15803d',
+  running: '#d97706',
+  failed: '#b91c1c',
   pending: '#6b7280',
-  ready: '#3b82f6',
-  degraded: '#eab308',
+  ready: '#1d4ed8',
+  degraded: '#ca8a04',
 };
 
 const STATE_LABELS: Record<string, string> = {
@@ -116,8 +116,8 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
 
   if (nodes.length === 0) {
     return (
-      <svg width={width} height={height} className="bg-gray-900/50 rounded-lg border border-gray-800">
-        <text x={width / 2} y={height / 2} textAnchor="middle" fill="#6b7280" fontSize={12} fontFamily="monospace">
+      <svg width={width} height={height} className="rounded-lg border border-slate-200 bg-white">
+        <text x={width / 2} y={height / 2} textAnchor="middle" fill="#64748b" fontSize={12}>
           DAG 节点为空 — 等待分析流程规划完成...
         </text>
       </svg>
@@ -125,17 +125,17 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
   }
 
   return (
-    <svg width={width} height={height} className="bg-gray-900/50 rounded-lg border border-gray-800 w-full" viewBox={`0 0 ${width} ${height}`}>
+    <svg width={width} height={height} className="w-full rounded-lg border border-slate-200 bg-white" viewBox={`0 0 ${width} ${height}`}>
       {/* Layer labels on the left */}
       {['编排', '源发现', '采集', '富化', '分析', '互审', '综合', '撰写', 'QA'].map((label, i) => (
-        <text key={i} x={4} y={30 + i * ((height - 60) / 9) + 4} fill="#374151" fontSize={8} fontFamily="monospace">
+        <text key={i} x={4} y={30 + i * ((height - 60) / 9) + 4} fill="#94a3b8" fontSize={8}>
           {label}
         </text>
       ))}
 
       {/* Edges */}
       {edgePaths.map((e, i) => (
-        <path key={i} d={e.d} fill="none" stroke="#374151" strokeWidth={1} />
+        <path key={i} d={e.d} fill="none" stroke="#cbd5e1" strokeWidth={1.2} />
       ))}
 
       {/* Nodes */}
@@ -150,14 +150,14 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
               <rect
                 x={ln.x - 38} y={ln.y - 12}
                 width={76} height={24} rx={4}
-                fill="none" stroke="#22c55e" strokeWidth={1.5}
+                fill="none" stroke="#15803d" strokeWidth={1.5}
                 className="animate-glowGreen"
               />
             )}
             <rect
               x={ln.x - 36} y={ln.y - 10}
               width={72} height={20} rx={4}
-              fill="#111827" stroke={color} strokeWidth={1}
+              fill="#ffffff" stroke={color} strokeWidth={1}
               className={isRunning ? 'animate-pulse' : ''}
               style={{ transition: 'stroke 0.4s ease' }}
             />
@@ -166,7 +166,7 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
               fill={color}
               style={{ transition: 'fill 0.3s ease' }}
             />
-            <text x={ln.x - 20} y={ln.y + 4} fill="#d1d5db" fontSize={9} fontFamily="monospace">
+            <text x={ln.x - 20} y={ln.y + 4} fill="#334155" fontSize={9} fontFamily="monospace">
               {short}
             </text>
           </g>
@@ -175,11 +175,11 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
 
       {/* Legend */}
       <g transform={`translate(${width - 130}, ${height - 110})`}>
-        <rect x={0} y={0} width={120} height={100} rx={4} fill="#111827" stroke="#374151" strokeWidth={0.5} />
+        <rect x={0} y={0} width={120} height={100} rx={4} fill="#ffffff" stroke="#cbd5e1" strokeWidth={0.5} />
         {Object.entries(STATE_LABELS).map(([state, label], i) => (
           <g key={state} transform={`translate(8, ${12 + i * 16})`}>
             <circle cx={4} cy={0} r={3} fill={STATE_COLORS[state]} />
-            <text x={12} y={4} fill="#9ca3af" fontSize={9} fontFamily="monospace">{label}</text>
+            <text x={12} y={4} fill="#475569" fontSize={9}>{label}</text>
           </g>
         ))}
       </g>

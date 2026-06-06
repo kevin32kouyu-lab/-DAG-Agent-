@@ -279,6 +279,8 @@ export interface AnalyticsResponse {
   pricing: PricingAnalytics;
   swot: SWOTDatum[];
   tech_stack: TechStackAnalytics;
+  data_source?: 'structured' | 'report_fallback' | 'empty';
+  warnings?: string[];
 }
 
 export interface ScoringDatum {

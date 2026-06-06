@@ -1,8 +1,13 @@
+"""这个模块负责把用户的竞品分析任务规划成可执行 DAG。"""
+
 import json
+import logging
 from src.agents.base import BaseAgent
 from src.agents.contracts import AgentOutput
 from src.agents.registry import agent_registry
 from src.dag.models import TaskDAG, DAGNode
+
+logger = logging.getLogger(__name__)
 
 
 @agent_registry.register(
@@ -102,7 +107,11 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
             temperature=0.1,
             skip_cache=True,
         )
-        return self._parse_dag_json(resp.content)
+        parsed = self._parse_dag_json(resp.content)
+        if parsed is None:
+            preview = resp.content[:200].replace("\n", " ")
+            logger.warning("DAG 生成结果无法解析，已返回空结果：%s", preview)
+        return parsed
 
     @staticmethod
     def _parse_dag_json(text: str) -> dict | None:
@@ -141,19 +150,31 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
     # The final analysis node that ReportGenerator should depend on if SWOT is absent.
     FALLBACK_REPORT_DEP = "FeatureAnalyzer"
 
-    def _json_to_dag(self, dag_json: dict) -> TaskDAG:
-        raw_nodes = dag_json.get("nodes", [])
+    @staticmethod
+    def _valid_node_dicts(raw_nodes: object) -> list[dict]:
+        """过滤 LLM 返回的坏节点，并补齐 DAGNode 需要的默认字段。"""
+        if not isinstance(raw_nodes, list):
+            logger.warning("DAG 节点跳过：nodes 字段不是列表")
+            return []
+
         validated = []
         for i, n in enumerate(raw_nodes):
             if not isinstance(n, dict):
+                logger.warning("DAG 节点跳过：第 %s 个节点不是对象", i)
                 continue
             if "node_id" not in n or "agent_type" not in n:
+                logger.warning("DAG 节点跳过：第 %s 个节点缺少 node_id 或 agent_type", i)
                 continue
             n = dict(n)
             n.setdefault("input_query", {})
             n.setdefault("depends_on", [])
             n.setdefault("priority", 0)
             validated.append(n)
+        return validated
+
+    def _json_to_dag(self, dag_json: dict) -> TaskDAG:
+        raw_nodes = dag_json.get("nodes", [])
+        validated = self._valid_node_dicts(raw_nodes)
         if not validated and raw_nodes:
             raise ValueError(f"All {len(raw_nodes)} nodes from LLM are missing node_id/agent_type")
         nodes = [
@@ -170,8 +191,12 @@ Excluded dimensions: {schema.get('exclude_dimensions', [])}
 
     def _ensure_mandatory_nodes(self, dag_json: dict, schema: dict,
                                 targets: list[str] | None = None) -> dict:
-        """Post-validate and inject mandatory agents (Writer, QA) if the LLM omitted them."""
-        nodes: list[dict] = dag_json.get("nodes", [])
+        """补齐报告和 QA 等强制节点，LLM 坏节点会先过滤。"""
+        raw_nodes = dag_json.get("nodes", [])
+        nodes = self._valid_node_dicts(raw_nodes)
+        if not nodes and raw_nodes:
+            raise ValueError(f"All {len(raw_nodes)} nodes from LLM are missing node_id/agent_type")
+        dag_json["nodes"] = nodes
         existing_types = {n["agent_type"] for n in nodes}
         existing_ids = {n["node_id"] for n in nodes}
         exclude = set(schema.get("exclude_dimensions", []))

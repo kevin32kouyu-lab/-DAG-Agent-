@@ -1,3 +1,5 @@
+// 这个组件从报告接口读取图表数据，并优先服务报告页的阅读体验。
+
 import { useState, useEffect } from 'react';
 import LoadingSkeleton from '../LoadingSkeleton';
 import EmptyState from '../EmptyState';
@@ -14,21 +16,29 @@ export default function AnalyticsDashboard({ taskId }: { taskId: string }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    setError('');
+    let ignore = false;
     fetch(`/api/report/${taskId}/analytics`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then(setData)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+      .then(nextData => {
+        if (ignore) return;
+        setData(nextData);
+        setError('');
+      })
+      .catch(e => {
+        if (!ignore) setError(e.message);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => { ignore = true; };
   }, [taskId]);
 
   if (loading) {
     return (
-      <div className="bg-gray-900/50 border border-gray-800/50 rounded-2xl p-8">
+      <div className="rounded-lg border border-slate-200 bg-white p-8">
         <LoadingSkeleton lines={6} />
       </div>
     );
@@ -41,6 +51,12 @@ export default function AnalyticsDashboard({ taskId }: { taskId: string }) {
   }
 
   if (!data) return null;
+
+  const sourceLabel = data.data_source === 'report_fallback'
+    ? '报告推断'
+    : data.data_source === 'structured'
+      ? '结构化数据'
+      : '暂无数据';
 
   const hasAnyData = data.products.length > 0 && (
     data.scoring.length > 0 ||
@@ -83,14 +99,23 @@ export default function AnalyticsDashboard({ taskId }: { taskId: string }) {
 
   return (
     <div className="space-y-4 animate-fadeIn">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-sm font-semibold text-gray-200">📊 分析仪表盘</span>
-        <span className="text-xs text-gray-600 font-mono">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-slate-950">分析仪表盘</span>
+        <span className="text-xs text-slate-500">
           {data.products.length} 产品 · {data.scoring.length > 0 ? `${new Set(data.scoring.map(s => s.dimension)).size} 维度` : ''}
+        </span>
+        <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-500">
+          {sourceLabel}
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {data.warnings && data.warnings.length > 0 && (
+        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {data.warnings[0]}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Radar — dimension scoring */}
         <ChartCard
           title="维度评分对比"

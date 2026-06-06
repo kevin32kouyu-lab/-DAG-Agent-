@@ -1,3 +1,5 @@
+// 这个组件统一展示任务和 DAG 节点状态。
+
 import type { NodeState } from '../types';
 
 interface StatusBadgeProps {
@@ -7,21 +9,21 @@ interface StatusBadgeProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
-  completed: { label: '✓ 完成', classes: 'text-green-400 bg-green-400/10 border-green-400/30' },
-  running:   { label: '◐ 运行中', classes: 'text-amber-400 bg-amber-400/10 border-amber-400/30' },
-  failed:    { label: '✕ 失败', classes: 'text-red-400 bg-red-400/10 border-red-400/30' },
-  pending:   { label: '○ 等待', classes: 'text-gray-500 bg-gray-500/10 border-gray-500/30' },
-  ready:     { label: '◉ 就绪', classes: 'text-blue-400 bg-blue-400/10 border-blue-400/30' },
-  degraded:  { label: '⚠ 降级', classes: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
-  planning:  { label: '◌ 规划中', classes: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30' },
+  completed: { label: '✓ 完成', classes: 'text-green-700 bg-green-50 border-green-200' },
+  running:   { label: '◐ 运行中', classes: 'text-amber-700 bg-amber-50 border-amber-200' },
+  failed:    { label: '✕ 失败', classes: 'text-red-700 bg-red-50 border-red-200' },
+  pending:   { label: '○ 等待', classes: 'text-slate-500 bg-slate-50 border-slate-200' },
+  ready:     { label: '◉ 就绪', classes: 'text-blue-700 bg-blue-50 border-blue-200' },
+  degraded:  { label: '⚠ 降级', classes: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+  planning:  { label: '◌ 规划中', classes: 'text-teal-700 bg-teal-50 border-teal-200' },
 };
 
 export default function StatusBadge({ status, label, pulse }: StatusBadgeProps) {
-  const config = STATUS_CONFIG[status] ?? { label: status, classes: 'text-gray-500 bg-gray-500/10 border-gray-500/30' };
+  const config = STATUS_CONFIG[status] ?? { label: status, classes: 'text-slate-500 bg-slate-50 border-slate-200' };
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-mono ${config.classes}`}>
+    <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs ${config.classes}`}>
       {pulse && status === 'running' && (
-        <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
       )}
       {label ?? config.label}
     </span>
@@ -36,7 +38,7 @@ export function StatusDot({ state }: { state: NodeState | string }) {
     pending: 'bg-gray-600',
     ready: 'bg-blue-500',
     degraded: 'bg-yellow-600',
-    planning: 'bg-cyan-500 animate-pulse',
+    planning: 'bg-teal-500 animate-pulse',
   };
   return <span className={`w-2 h-2 rounded-full ${colors[state] || 'bg-gray-600'}`} />;
 }

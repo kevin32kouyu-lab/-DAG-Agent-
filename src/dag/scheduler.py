@@ -1,9 +1,14 @@
+"""这个模块负责按 DAG 依赖顺序调度节点，并处理反馈、快照和状态事件。"""
+
 import asyncio
 from datetime import datetime
+import logging
 from src.dag.models import TaskDAG, DAGNode, NodeState, NodeSnapshot
 from src.dag.feedback import FeedbackHandler
 
-CHECKPOINT_AGENT = "DataEnricher"
+logger = logging.getLogger(__name__)
+
+CHECKPOINT_AGENT = "SourceDiscovery"
 CHECKPOINT_TIMEOUT = 30 * 60  # 30 minutes auto-release
 NODE_TIMEOUT = 300  # per-node timeout in seconds (5 min)
 
@@ -31,7 +36,10 @@ class DAGScheduler:
 
     async def _emit(self, event: str, *args, **kwargs):
         for cb in self._event_callbacks.get(event, []):
-            await cb(*args, **kwargs)
+            try:
+                await cb(*args, **kwargs)
+            except Exception:
+                logger.warning("事件回调失败，任务继续执行：event=%s", event, exc_info=True)
 
     def release_checkpoint(self) -> None:
         if self._checkpoint_event:
@@ -42,12 +50,11 @@ class DAGScheduler:
         self._gateway = gateway
 
         # Restore from snapshot: skip COMPLETED nodes
-        if self.snapshot_store:
-            snapshots = self.snapshot_store.load(dag.task_id)
-            if snapshots:
-                for node in dag.nodes:
-                    if node.node_id in snapshots and snapshots[node.node_id].state == NodeState.COMPLETED:
-                        node.state = NodeState.COMPLETED
+        snapshots = self._load_snapshots(dag.task_id)
+        if snapshots:
+            for node in dag.nodes:
+                if node.node_id in snapshots and snapshots[node.node_id].state == NodeState.COMPLETED:
+                    node.state = NodeState.COMPLETED
 
         while True:
             ready = dag.get_ready_nodes()
@@ -99,7 +106,7 @@ class DAGScheduler:
             pages = len(result) if result else 0
             await self._emit("cost_update", task_id, 0.0, cost, tokens, pages)
         except Exception:
-            pass  # cost tracking is non-critical
+            logger.warning("成本更新失败，任务继续执行：task_id=%s", task_id, exc_info=True)
 
     async def emit_dag_created(self, task_id: str, dag) -> None:
         """Push full DAG structure to all WS clients when DAG generation completes."""
@@ -144,13 +151,7 @@ class DAGScheduler:
             await self._emit("node_state_change", node)
 
             # Snapshot after each completed node for checkpoint/resume
-            if self.snapshot_store:
-                self.snapshot_store.save(NodeSnapshot(
-                    task_id=dag.task_id,
-                    node_id=node.node_id,
-                    state=NodeState.COMPLETED,
-                    checkpoint_time=datetime.now(),
-                ))
+            self._save_snapshot(dag.task_id, node)
 
             # Feedback: check QA output for failed nodes
             if node.agent_type in QA_AGENT_TYPES:
@@ -205,7 +206,11 @@ class DAGScheduler:
                         timeout=CHECKPOINT_TIMEOUT,
                     )
                 except asyncio.TimeoutError:
-                    pass
+                    logger.warning(
+                        "检查点等待超时，任务自动继续：task_id=%s node_id=%s",
+                        dag.task_id,
+                        node.node_id,
+                    )
                 self._checkpoint_event = None
                 await self._emit("checkpoint_released", node, dag.task_id)
 
@@ -214,3 +219,27 @@ class DAGScheduler:
             node.context["error"] = str(e)
             await self._emit("node_failed", node)
             await self._emit("node_state_change", node)
+
+    def _save_snapshot(self, task_id: str, node: DAGNode) -> None:
+        """保存节点完成快照；写入失败只记录日志，不影响节点完成状态。"""
+        if not self.snapshot_store:
+            return
+        try:
+            self.snapshot_store.save(NodeSnapshot(
+                task_id=task_id,
+                node_id=node.node_id,
+                state=NodeState.COMPLETED,
+                checkpoint_time=datetime.now(),
+            ))
+        except Exception:
+            logger.warning("快照保存失败，任务继续执行：task_id=%s node_id=%s", task_id, node.node_id, exc_info=True)
+
+    def _load_snapshots(self, task_id: str) -> dict:
+        """读取任务快照；读取失败时记录日志并从头执行。"""
+        if not self.snapshot_store:
+            return {}
+        try:
+            return self.snapshot_store.load(task_id) or {}
+        except Exception:
+            logger.warning("快照读取失败，将从头执行任务：task_id=%s", task_id, exc_info=True)
+            return {}

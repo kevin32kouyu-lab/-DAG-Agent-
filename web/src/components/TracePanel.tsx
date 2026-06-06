@@ -29,12 +29,12 @@ function CollapsibleText({ text, label }: { text: string; label: string }) {
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="text-xs text-cyan-400 hover:text-cyan-300 font-mono"
+        className="text-xs font-medium text-teal-700 hover:text-teal-900"
       >
         [查看完整 {label}]
       </button>
       {open && (
-        <pre className="mt-1 p-2 bg-gray-950 rounded border border-gray-800 text-xs text-gray-400 font-mono whitespace-pre-wrap max-h-64 overflow-auto">
+        <pre className="mt-1 max-h-64 overflow-auto rounded border border-slate-200 bg-slate-50 p-2 font-mono text-xs text-slate-600 whitespace-pre-wrap">
           {text}
         </pre>
       )}
@@ -48,21 +48,23 @@ export default function TracePanel({ nodeId, agentType, stepTraces, duration, co
 
   if (!stepTraces || stepTraces.length === 0) {
     return (
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-        <p className="text-gray-600 font-mono text-xs">Agent 决策轨迹不可用（审计日志未启用）</p>
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <p className="text-xs text-slate-500">Agent 决策轨迹不可用（审计日志未启用）</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
       {/* header */}
-      <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div>
-          <h4 className="text-sm font-medium text-gray-300">Agent 决策轨迹: {agentType || 'Unknown'}</h4>
-          <p className="text-xs text-gray-600 font-mono mt-0.5">节点: {nodeId} · 总步数: {stepTraces.length} 步</p>
+          <h4 className="text-sm font-medium text-slate-900">Agent 决策轨迹: {agentType || 'Unknown'}</h4>
+          <p className="mt-0.5 text-xs text-slate-500">
+            节点: <span className="font-mono">{nodeId}</span> · 总步数: <span className="font-mono">{stepTraces.length}</span> 步
+          </p>
         </div>
-        {duration && <span className="text-xs text-gray-500 font-mono">{duration}</span>}
+        {duration && <span className="font-mono text-xs text-slate-500">{duration}</span>}
       </div>
 
       {/* steps */}
@@ -70,25 +72,25 @@ export default function TracePanel({ nodeId, agentType, stepTraces, duration, co
         {stepTraces.map((st, i) => (
           <div key={i} className={`border-l-2 ${PHASE_COLORS[st.phase] || 'border-l-gray-700'} pl-4 py-1`}>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-mono">Step {st.step}</span>
-              <span className="text-xs text-gray-400 font-mono">── {PHASE_LABELS[st.phase] || st.phase} ──</span>
+              <span className="font-mono text-xs text-slate-500">Step {st.step}</span>
+              <span className="text-xs text-slate-500">── {PHASE_LABELS[st.phase] || st.phase} ──</span>
             </div>
 
             {/* Observe data */}
             {st.phase === 'Observe' && st.observation_summary && (
-              <p className="text-xs text-gray-500 mt-0.5">{st.observation_summary}</p>
+              <p className="mt-0.5 text-xs text-slate-600">{st.observation_summary}</p>
             )}
 
             {/* Think reasoning */}
             {st.phase === 'Think' && (
               <div className="mt-1 space-y-1">
                 {st.reasoning && (
-                  <p className="text-xs text-gray-400 leading-relaxed line-clamp-3">
+                  <p className="text-xs leading-relaxed text-slate-600 line-clamp-3">
                     {st.reasoning}
                   </p>
                 )}
                 {st.confidence !== undefined && (
-                  <span className="text-xs text-gray-600 font-mono">
+                  <span className="font-mono text-xs text-slate-500">
                     置信度: {(st.confidence * 100).toFixed(0)}%
                   </span>
                 )}
@@ -99,21 +101,21 @@ export default function TracePanel({ nodeId, agentType, stepTraces, duration, co
 
             {/* Act details */}
             {st.phase === 'Act' && (
-              <div className="mt-0.5 text-xs text-gray-500 font-mono space-y-0.5">
-                {st.action && <span>工具: {st.action}</span>}
-                {st.action_params && <div>参数: {JSON.stringify(st.action_params)}</div>}
+              <div className="mt-0.5 space-y-0.5 text-xs text-slate-600">
+                {st.action && <span>工具: <span className="font-mono">{st.action}</span></span>}
+                {st.action_params && <div>参数: <span className="font-mono">{JSON.stringify(st.action_params)}</span></div>}
                 {st.action_result_summary && <div>结果: {st.action_result_summary}</div>}
               </div>
             )}
 
             {/* Finalize output */}
             {st.phase === 'Finalize' && (
-              <div className="mt-0.5 text-xs text-gray-500 font-mono space-y-0.5">
+              <div className="mt-0.5 space-y-0.5 text-xs text-slate-600">
                 {st.nodes_created && st.nodes_created.length > 0 && (
-                  <div>创建节点: {st.nodes_created.length} 个</div>
+                  <div>创建节点: <span className="font-mono">{st.nodes_created.length}</span> 个</div>
                 )}
                 {st.edges_created && st.edges_created.length > 0 && (
-                  <div>创建边: {st.edges_created.length} 条</div>
+                  <div>创建边: <span className="font-mono">{st.edges_created.length}</span> 条</div>
                 )}
               </div>
             )}
@@ -122,9 +124,9 @@ export default function TracePanel({ nodeId, agentType, stepTraces, duration, co
       </div>
 
       {/* footer */}
-      <div className="px-4 py-2 border-t border-gray-800 flex items-center justify-between font-mono text-xs">
-        <span className="text-gray-600">总成本:</span>
-        <span className="text-gray-500">
+      <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs">
+        <span className="text-slate-500">总成本:</span>
+        <span className="font-mono text-slate-600">
           Token {totalTokens >= 1000 ? `${(totalTokens / 1000).toFixed(1)}k` : totalTokens}
           {' '}| ${totalCost.toFixed(2)}
           {duration && ` | ${duration}`}

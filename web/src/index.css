@@ -5,6 +5,12 @@
   --font-mono: "JetBrains Mono", monospace;
 }
 
+html,
+body {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
 /* ---- custom keyframes ---- */
 
 @keyframes spin {
@@ -90,7 +96,7 @@
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
@@ -125,35 +131,35 @@
 
 /* ---- markdown rendered content ---- */
 
-.md-content .md-h1 { font-size: 1.375rem; font-weight: 700; color: #f1f5f9; margin: 1.5em 0 0.5em; line-height: 1.3; }
-.md-content .md-h2 { font-size: 1.2rem; font-weight: 700; color: #e2e8f0; margin: 1.25em 0 0.4em; line-height: 1.35; }
-.md-content .md-h3 { font-size: 1.05rem; font-weight: 600; color: #cbd5e1; margin: 1em 0 0.3em; line-height: 1.4; }
+.md-content .md-h1 { font-size: 1.375rem; font-weight: 700; color: #0f172a; margin: 1.5em 0 0.5em; line-height: 1.3; }
+.md-content .md-h2 { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 1.25em 0 0.4em; line-height: 1.35; }
+.md-content .md-h3 { font-size: 1.05rem; font-weight: 600; color: #1e293b; margin: 1em 0 0.3em; line-height: 1.4; }
 .md-content .md-h4,
 .md-content .md-h5,
-.md-content .md-h6 { font-size: 0.95rem; font-weight: 600; color: #94a3b8; margin: 0.75em 0 0.25em; }
+.md-content .md-h6 { font-size: 0.95rem; font-weight: 600; color: #334155; margin: 0.75em 0 0.25em; }
 
 .md-content .md-p { margin: 0.5em 0; }
 .md-content .md-spacer { height: 0.5em; }
 
-.md-content strong { color: #e2e8f0; font-weight: 600; }
-.md-content em { font-style: italic; color: #cbd5e1; }
+.md-content strong { color: #0f172a; font-weight: 600; }
+.md-content em { font-style: italic; color: #334155; }
 
 .md-content .md-inline-code {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.85em;
-  background: rgba(148, 163, 184, 0.1);
-  color: #7dd3fc;
+  background: #f1f5f9;
+  color: #1d4ed8;
   padding: 0.1em 0.35em;
   border-radius: 3px;
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  border: 1px solid #cbd5e1;
 }
 
 .md-content .md-link {
-  color: #22d3ee;
+  color: #0f766e;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.md-content .md-link:hover { color: #67e8f9; }
+.md-content .md-link:hover { color: #115e59; }
 
 .md-content .md-ul,
 .md-content .md-ol {
@@ -163,28 +169,60 @@
 .md-content .md-ul { list-style: disc; }
 .md-content .md-ol { list-style: decimal; }
 .md-content li { margin: 0.15em 0; }
-.md-content li::marker { color: #64748b; }
+.md-content li::marker { color: #0f766e; }
 
 .md-content .md-blockquote {
-  border-left: 3px solid #06b6d4;
+  border-left: 3px solid #0f766e;
   margin: 0.6em 0;
   padding: 0.4em 0.8em;
-  background: rgba(6, 182, 212, 0.05);
+  background: #f0fdfa;
   border-radius: 0 4px 4px 0;
 }
-.md-content .md-blockquote p { margin: 0; color: #94a3b8; }
+.md-content .md-blockquote p { margin: 0; color: #475569; }
 
 .md-content .md-hr {
   border: none;
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  border-top: 1px solid #e2e8f0;
   margin: 1.2em 0;
+}
+
+.md-content .md-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 0.85em 0;
+}
+
+.md-content .md-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 0.86em;
+}
+
+.md-content .md-table th,
+.md-content .md-table td {
+  border: 1px solid #cbd5e1;
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.md-content .md-table th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.md-content .md-table td {
+  background: #ffffff;
+  color: #334155;
 }
 
 /* ---- Recharts chart styles ---- */
 
 .recharts-default-tooltip {
-  background: rgba(15, 23, 42, 0.96) !important;
-  border: 1px solid #334155 !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
   border-radius: 8px !important;
   padding: 8px 12px !important;
 }
@@ -292,6 +330,13 @@
   .md-content .md-hr { border-top-color: #cbd5e1 !important; }
 
   .md-content strong { color: #111 !important; }
+
+  .md-content .md-table th,
+  .md-content .md-table td {
+    border-color: #cbd5e1 !important;
+    color: #111 !important;
+    background: #fff !important;
+  }
 
   /* chart print overrides — Recharts SVG elements */
   .recharts-cartesian-grid-horizontal line,

@@ -1,191 +1,93 @@
 import json
+import logging
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
+from src.api import analytics_builder
 from src.api.deps import get_store, get_gateway, get_scheduler
+from src.api.report_pdf import build_pdf
 from src.dag.models import NodeState
 
 router = APIRouter()
-
-# Chinese font path — falls back to built-in on non-Windows
-import platform
-import os
-
-_CHINESE_FONT_PATH = None
-if platform.system() == "Windows":
-    for candidate in [
-        r"C:\Windows\Fonts\simhei.ttf",
-        r"C:\Windows\Fonts\msyh.ttc",
-    ]:
-        if os.path.exists(candidate):
-            _CHINESE_FONT_PATH = candidate
-            break
+logger = logging.getLogger(__name__)
 
 
-async def _translate_sections(sections: list[dict]) -> list[dict]:
-    """将报告章节从中文翻译为英文，保留 markdown 结构。"""
+def _detect_language(text: str) -> str:
+    """简单语言检测：统计 CJK 字符比例。"""
+    if not text:
+        return "en"
+    cjk = sum(1 for c in text if '一' <= c <= '鿿' or '぀' <= c <= 'ヿ')
+    return "zh" if cjk > len(text.replace(' ', '')) * 0.08 else "en"
+
+
+def _first_section_content(sections: list[dict]) -> str:
+    for s in sections:
+        c = s.get("content", "")
+        if c.strip():
+            return c
+    return ""
+
+
+async def _translate_sections_impl(sections: list[dict], direction: str) -> list[dict]:
+    """翻译报告章节，保留 markdown 结构。direction: 'zh2en' | 'en2zh'"""
     import logging
     logger = logging.getLogger(__name__)
     gateway = get_gateway()
 
-    translated: list[dict] = []
-    for s in sections:
-        cn_content = s.get("content", "")
-        cn_section = s.get("section", "")
-        if not cn_content.strip():
-            translated.append({**s, "section": cn_section, "content": cn_content})
-            continue
-
-        prompt = (
+    if direction == "zh2en":
+        system_prompt = "You are a professional translator. Translate Chinese to English accurately while preserving markdown formatting."
+        prompt_prefix = (
             "Translate the following Chinese competitive analysis report section to English. "
             "Preserve all markdown formatting (headings, lists, bold, tables, etc.). "
             "Keep all product names, technical terms, and numbers exactly as-is. "
             "Only translate the text, do not add or remove content.\n\n"
-            f"## {cn_section}\n\n{cn_content}"
         )
+    else:
+        system_prompt = "You are a professional translator. Translate English to Chinese accurately while preserving markdown formatting."
+        prompt_prefix = (
+            "Translate the following English competitive analysis report section to Chinese. "
+            "Preserve all markdown formatting (headings, lists, bold, tables, etc.). "
+            "Keep all product names, technical terms, and numbers exactly as-is. "
+            "Only translate the text, do not add or remove content.\n\n"
+        )
+
+    translated: list[dict] = []
+    for s in sections:
+        src_content = s.get("content", "")
+        src_section = s.get("section", "")
+        if not src_content.strip():
+            translated.append({**s, "section": src_section, "content": src_content})
+            continue
+
+        prompt = prompt_prefix + f"## {src_section}\n\n{src_content}"
 
         try:
             resp = await gateway.chat(
-                system="You are a professional translator. Translate Chinese to English accurately while preserving markdown formatting.",
+                system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
                 model_tier="analysis",
                 max_tokens=4096,
                 temperature=0.2,
             )
-            en_content = resp.content
+            out_content = resp.content
 
-            # 从翻译结果中提取英文 section 名称（首行 ## heading）
-            en_section = cn_section
-            lines = en_content.strip().split("\n")
+            out_section = src_section
+            lines = out_content.strip().split("\n")
             if lines:
                 first = lines[0].strip()
                 if first.startswith("## "):
-                    en_section = first[3:].strip()
+                    out_section = first[3:].strip()
                     lines.pop(0)
                     if lines and not lines[0].strip():
                         lines.pop(0)
-                    en_content = "\n".join(lines)
+                    out_content = "\n".join(lines)
         except Exception as e:
-            logger.warning(f"translation failed for section '{cn_section}': {e}")
-            en_content = cn_content
+            logger.warning(f"translation failed for section '{src_section}': {e}")
+            out_content = src_content
 
-        translated.append({**s, "section": en_section, "content": en_content.strip()})
+        translated.append({**s, "section": out_section, "content": out_content.strip()})
 
     return translated
-
-
-def _build_pdf(task_id: str, sections: list[dict]) -> bytes:
-    from fpdf import FPDF
-
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # register Chinese font if available
-    font_name = "Helvetica"
-    if _CHINESE_FONT_PATH:
-        try:
-            pdf.add_font("CJK", "", _CHINESE_FONT_PATH)
-            pdf.add_font("CJK", "B", _CHINESE_FONT_PATH)
-            font_name = "CJK"
-        except Exception:
-            pass
-
-    # ── cover page ──
-    pdf.add_page()
-    pdf.ln(60)
-    if font_name == "CJK":
-        pdf.set_font("CJK", "B", 28)
-        pdf.cell(0, 14, "竞品分析报告", align="C", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("CJK", "", 12)
-        pdf.ln(8)
-        pdf.cell(0, 8, f"Report ID: {task_id}", align="C", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(0, 8, f"生成日期: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}", align="C",
-                 new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(6)
-        pdf.cell(0, 8, f"共 {len(sections)} 个章节", align="C", new_x="LMARGIN", new_y="NEXT")
-    else:
-        pdf.set_font("Helvetica", "B", 24)
-        pdf.cell(0, 14, "Competitive Analysis Report", align="C", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("Helvetica", "", 11)
-        pdf.ln(8)
-        pdf.cell(0, 8, f"Report ID: {task_id}", align="C", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(6)
-        pdf.cell(0, 8, f"Sections: {len(sections)}", align="C", new_x="LMARGIN", new_y="NEXT")
-
-    # ── table of contents ──
-    pdf.ln(12)
-    if font_name == "CJK":
-        pdf.set_font("CJK", "B", 14)
-        pdf.cell(0, 10, "目  录", align="C", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(6)
-        pdf.set_font("CJK", "", 11)
-    else:
-        pdf.set_font("Helvetica", "B", 14)
-        pdf.cell(0, 10, "Contents", align="C", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(6)
-        pdf.set_font("Helvetica", "", 11)
-
-    for i, s in enumerate(sections):
-        title = s.get("section", f"Section {i}")
-        # sanitize: truncate long titles
-        display_title = title[:60] + ("..." if len(title) > 60 else "")
-        pdf.cell(0, 7, f"{i + 1}.  {display_title}", new_x="LMARGIN", new_y="NEXT")
-
-    # ── section content ──
-    for i, s in enumerate(sections):
-        pdf.add_page()
-        title = s.get("section", f"Section {i}")
-        content = s.get("content", "")
-
-        if font_name == "CJK":
-            pdf.set_font("CJK", "B", 14)
-        else:
-            pdf.set_font("Helvetica", "B", 14)
-
-        pdf.multi_cell(0, 8, title)
-
-        pdf.ln(4)
-        # separator
-        pdf.ln(2)
-
-        if font_name == "CJK":
-            pdf.set_font("CJK", "", 10.5)
-        else:
-            pdf.set_font("Helvetica", "", 10)
-
-        # split content into paragraphs and render
-        for para in content.split("\n"):
-            para = para.strip()
-            if not para:
-                pdf.ln(3)
-                continue
-            # handle potential markdown heading leftovers
-            if para.startswith("### "):
-                if font_name == "CJK":
-                    pdf.set_font("CJK", "B", 11)
-                else:
-                    pdf.set_font("Helvetica", "B", 11)
-                pdf.multi_cell(0, 6.5, para[4:])
-                if font_name == "CJK":
-                    pdf.set_font("CJK", "", 10.5)
-                else:
-                    pdf.set_font("Helvetica", "", 10)
-            elif para.startswith("## "):
-                if font_name == "CJK":
-                    pdf.set_font("CJK", "B", 12)
-                else:
-                    pdf.set_font("Helvetica", "B", 12)
-                pdf.multi_cell(0, 7, para[3:])
-                if font_name == "CJK":
-                    pdf.set_font("CJK", "", 10.5)
-                else:
-                    pdf.set_font("Helvetica", "", 10)
-            elif para.startswith("- ") or para.startswith("* "):
-                pdf.multi_cell(0, 6, f"  • {para[2:]}")
-            else:
-                pdf.multi_cell(0, 6, para)
-
-    return bytes(pdf.output())
 
 
 def _extract_metadata(node) -> dict:
@@ -198,20 +100,52 @@ def _extract_metadata(node) -> dict:
     return metadata or {}
 
 
+def _collect_evidence_sources(store, node_id: str, max_depth: int) -> list[dict]:
+    """读取节点的上游一层证据来源，失败时记录日志并返回空列表。"""
+    evidence_chain = []
+    try:
+        edges = store.trace_upstream(node_id, max_depth=max_depth)
+        source_ids = {edge.target_id for edge in edges}
+        for source_id in source_ids:
+            src_node = store.get_node(source_id)
+            if src_node and src_node.layer == 1:
+                evidence_chain.append({
+                    "id": src_node.id,
+                    "node_type": src_node.node_type.value if hasattr(src_node.node_type, "value") else str(src_node.node_type),
+                    "url": getattr(src_node, "url", ""),
+                    "title": getattr(src_node, "title", getattr(src_node, "label", "Source Info")),
+                })
+    except Exception as exc:
+        logger.warning("证据链读取失败: node_id=%s, reason=%s", node_id, exc)
+    return evidence_chain
+
+
 def _layer1_report_sections(store, task_id: str) -> list[dict]:
-    """Primary: read ReportSection nodes from the knowledge graph."""
+    """Primary: read ReportSection nodes from the knowledge graph (dedup by section name)."""
     all_sections = store.query_nodes(node_type="ReportSection", layer=3)
-    sections = []
+    sections: list[dict] = []
+    seen: set[str] = set()
     for s in all_sections:
         node_id = getattr(s, "id", "")
         metadata = _extract_metadata(s)
         if not metadata or metadata.get("task_id") != task_id:
             continue
+        sec_name = getattr(s, "section", "")
+        content = getattr(s, "content", "")
+        # 按 section 名 + content 前 80 字符去重，防止指数级重复节点
+        dedup_key = f"{sec_name}|{content[:80]}"
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+
+        evidence_chain = _collect_evidence_sources(store, node_id, max_depth=5)
+
         sections.append({
             "node_id": node_id,
-            "section": getattr(s, "section", ""),
-            "content": getattr(s, "content", ""),
+            "section": sec_name,
+            "content": content,
             "order": getattr(s, "order", 0),
+            "evidence_sources": evidence_chain,
         })
     sections.sort(key=lambda x: x["order"])
     return sections
@@ -237,7 +171,7 @@ def _layer2_report_generator_output(scheduler, task_id: str) -> list[dict] | Non
     sections_data = output_data.get("sections", [])
     if report_md:
         return [{"node_id": "rg_output", "section": "完整报告",
-                 "content": report_md, "order": 0}]
+                 "content": report_md, "order": 0, "evidence_sources": []}]
     if sections_data:
         return sections_data
     return None
@@ -251,13 +185,17 @@ def _layer3_assembled_report(scheduler, task_id: str) -> list[dict]:
     parts: list[dict] = []
     missing_dimensions: list[str] = []
     order = 0
+    store = get_store()
+
+    # 基础节点不需要作为报告章节展示，ReportGenerator 由 layer 2 处理
+    skip_types = {"ReportGenerator", "Orchestrator", "SourceDiscovery", "Collector", "DataEnricher"}
 
     for node in sorted(dag.nodes, key=lambda n: n.node_id):
         if node.state != NodeState.COMPLETED:
-            if node.agent_type not in ("ReportGenerator", "QA_FactCheck", "QA_LogicCheck",
-                                        "Orchestrator", "SourceDiscovery", "Collector",
-                                        "DataEnricher"):
+            if node.agent_type not in skip_types.union({"QA_FactCheck", "QA_LogicCheck"}):
                 missing_dimensions.append(node.agent_type)
+            continue
+        if node.agent_type in skip_types:
             continue
         output_data = node.context.get("_output_data", {})
         summary = ""
@@ -265,12 +203,16 @@ def _layer3_assembled_report(scheduler, task_id: str) -> list[dict]:
             summary = output_data.get("summary", "") or json.dumps(output_data, default=str)
         elif output_data:
             summary = str(output_data)
+
+        evidence_chain = _collect_evidence_sources(store, node.node_id, max_depth=4)
+
         if summary and len(summary) > 20:
             parts.append({
                 "node_id": node.node_id,
                 "section": f"{node.agent_type} 分析结果",
                 "content": summary,
                 "order": order,
+                "evidence_sources": evidence_chain,
             })
             order += 1
 
@@ -281,7 +223,7 @@ def _layer3_assembled_report(scheduler, task_id: str) -> list[dict]:
     header += f"> 以下维度缺失或未完成: {', '.join(missing_dimensions) if missing_dimensions else '无'}\n\n"
     header += "---\n\n"
     parts.insert(0, {"node_id": "header", "section": "报告状态",
-                      "content": header.strip(), "order": -1})
+                      "content": header.strip(), "order": -1, "evidence_sources": []})
     return parts
 
 
@@ -321,16 +263,20 @@ def _resolve_sections(task_id: str) -> list[dict]:
 async def get_report(task_id: str, format: str = Query("markdown"), lang: str = Query("zh")):
     sections = _resolve_sections(task_id)
 
-    # 翻译为英文
-    if lang == "en":
-        sections = await _translate_sections(sections)
+    # 按需双向翻译：检测内容语言，仅在需要时翻译
+    sample = _first_section_content(sections)
+    content_lang = _detect_language(sample)
+    if lang == "zh" and content_lang == "en":
+        sections = await _translate_sections_impl(sections, "en2zh")
+    elif lang == "en" and content_lang == "zh":
+        sections = await _translate_sections_impl(sections, "zh2en")
 
     if format == "json":
         return {"task_id": task_id, "format": "json", "sections": sections, "lang": lang}
 
     if format == "pdf":
         try:
-            pdf_bytes = _build_pdf(task_id, sections)
+            pdf_bytes = build_pdf(task_id, sections)
             return Response(
                 content=pdf_bytes,
                 media_type="application/pdf",
@@ -350,206 +296,9 @@ async def get_report(task_id: str, format: str = Query("markdown"), lang: str = 
 # ── Analytics endpoint ────────────────────────────────────────────
 
 
-def _get_task_products(task_id: str) -> list[str]:
-    """Extract target products from the DAG input query."""
-    scheduler = get_scheduler()
-    dag = scheduler.get_task_dag(task_id)
-    if dag:
-        for node in dag.nodes:
-            targets = node.input_query.get("targets", [])
-            if targets:
-                return targets
-    return []
-
-
-def _belongs_to_task(node, task_id: str, products: list[str]) -> bool:
-    """Check if a knowledge graph node belongs to this task."""
-    meta = _extract_metadata(node)
-    if meta.get("task_id") == task_id:
-        return True
-    product = getattr(node, "product", "") or meta.get("product", "")
-    if product and products:
-        for t in products:
-            if t.lower() in product.lower() or product.lower() in t.lower():
-                return True
-    return False
-
-
-def _build_scoring_data(nodes: list) -> list[dict]:
-    result = []
-    for n in nodes:
-        meta = _extract_metadata(n)
-        product = getattr(n, "product", "") or meta.get("product", "") or "Unknown"
-        dimension = getattr(n, "dimension", "") or ""
-        score = getattr(n, "score", None)
-        weight = getattr(n, "weight", 1.0)
-        if score is not None:
-            result.append({
-                "product": product,
-                "dimension": dimension,
-                "score": float(score),
-                "weight": float(weight),
-            })
-    return result
-
-
-def _build_feature_data(nodes: list) -> dict:
-    products_set: set[str] = set()
-    features: list[dict] = []
-
-    for n in nodes:
-        meta = _extract_metadata(n)
-        product = getattr(n, "product", "") or meta.get("product", "") or "Unknown"
-        feature_name = getattr(n, "feature_name", "") or getattr(n, "label", "")
-        category = getattr(n, "category", "") or ""
-        maturity = getattr(n, "maturity", "unknown")
-        differentiation = getattr(n, "differentiation", "unknown")
-
-        if not feature_name:
-            continue
-        products_set.add(product)
-        key_base = product
-        features.append({
-            "feature_name": feature_name,
-            "category": category,
-            f"{key_base}_maturity": maturity,
-            f"{key_base}_differentiation": differentiation,
-        })
-
-    # merge same feature_name across products
-    merged: dict[str, dict] = {}
-    for f in features:
-        fn = f["feature_name"]
-        if fn not in merged:
-            merged[fn] = {"feature_name": fn, "category": f["category"]}
-        merged[fn].update({k: v for k, v in f.items() if k not in ("feature_name", "category")})
-
-    return {
-        "products": sorted(products_set),
-        "features": list(merged.values()),
-    }
-
-
-def _build_sentiment_data(nodes: list) -> dict:
-    products_set: set[str] = set()
-    topics: dict[str, dict] = {}
-
-    for n in nodes:
-        meta = _extract_metadata(n)
-        product = getattr(n, "product", "") or meta.get("product", "") or "Unknown"
-        topic = getattr(n, "topic", "") or getattr(n, "label", "")
-        sentiment_score = getattr(n, "sentiment_score", None)
-        trend = getattr(n, "trend", "stable")
-
-        if not topic or sentiment_score is None:
-            continue
-        products_set.add(product)
-        if topic not in topics:
-            topics[topic] = {"topic": topic}
-        topics[topic][f"{product}_score"] = round(float(sentiment_score), 3)
-        topics[topic][f"{product}_trend"] = trend
-
-    return {
-        "products": sorted(products_set),
-        "topics": list(topics.values()),
-    }
-
-
-def _build_pricing_data(pricing_nodes: list, model_nodes: list) -> dict:
-    plans = []
-    for n in pricing_nodes:
-        meta = _extract_metadata(n)
-        product = getattr(n, "product", "") or meta.get("product", "") or "Unknown"
-        plans.append({
-            "plan_name": getattr(n, "plan_name", "") or getattr(n, "label", ""),
-            "product": product,
-            "price": float(getattr(n, "price", 0) or 0),
-            "billing_cycle": getattr(n, "billing_cycle", "") or "",
-        })
-
-    value_scores = []
-    for n in model_nodes:
-        meta = _extract_metadata(n)
-        product = getattr(n, "product", "") or meta.get("product", "") or "Unknown"
-        vs = getattr(n, "value_score", None)
-        if vs is not None:
-            value_scores.append({
-                "product": product,
-                "value_score": round(float(vs), 3),
-                "strategy": getattr(n, "strategy", "") or "",
-                "target_segment": getattr(n, "target_segment", "") or "",
-            })
-
-    return {"plans": plans, "value_scores": value_scores}
-
-
-def _build_swot_data(nodes: list) -> list[dict]:
-    result = []
-    for n in nodes:
-        meta = _extract_metadata(n)
-        product = getattr(n, "product", "") or meta.get("product", "") or "Unknown"
-        result.append({
-            "product": product,
-            "strengths_count": len(getattr(n, "strengths", []) or []),
-            "weaknesses_count": len(getattr(n, "weaknesses", []) or []),
-            "opportunities_count": len(getattr(n, "opportunities", []) or []),
-            "threats_count": len(getattr(n, "threats", []) or []),
-        })
-    return result
-
-
-def _build_techstack_data(nodes: list) -> dict:
-    languages: list[dict] = []
-    frameworks: list[dict] = []
-    infra: list[dict] = []
-
-    for n in nodes:
-        meta = _extract_metadata(n)
-        product = getattr(n, "product", "") or meta.get("product", "") or "Unknown"
-        for item in (getattr(n, "languages", None) or []):
-            languages.append({"name": item, product: True})
-        for item in (getattr(n, "frameworks", None) or []):
-            frameworks.append({"name": item, product: True})
-        for item in (getattr(n, "infra", None) or []):
-            infra.append({"name": item, product: True})
-
-    return {
-        "languages": languages,
-        "frameworks": frameworks,
-        "infra": infra,
-    }
-
-
 @router.get("/report/{task_id}/analytics")
 async def get_report_analytics(task_id: str):
     """Returns chart-ready structured metrics for the task."""
     store = get_store()
-    products = _get_task_products(task_id)
-
-    node_types = ["ScoringNode", "FeatureNode", "SentimentNode",
-                  "PricingData", "PricingModel", "SWOTNode", "TechStack"]
-    all_by_type: dict[str, list] = {}
-    for ntype in node_types:
-        all_by_type[ntype] = store.query_nodes(node_type=ntype)
-
-    def filt(nodes):
-        return [n for n in nodes if _belongs_to_task(n, task_id, products)]
-
-    scoring = filt(all_by_type.get("ScoringNode", []))
-    features = filt(all_by_type.get("FeatureNode", []))
-    sentiment = filt(all_by_type.get("SentimentNode", []))
-    pricing_data = filt(all_by_type.get("PricingData", []))
-    pricing_model = filt(all_by_type.get("PricingModel", []))
-    swot = filt(all_by_type.get("SWOTNode", []))
-    tech_stack = filt(all_by_type.get("TechStack", []))
-
-    return {
-        "task_id": task_id,
-        "products": products,
-        "scoring": _build_scoring_data(scoring),
-        "features": _build_feature_data(features),
-        "sentiment": _build_sentiment_data(sentiment),
-        "pricing": _build_pricing_data(pricing_data, pricing_model),
-        "swot": _build_swot_data(swot),
-        "tech_stack": _build_techstack_data(tech_stack),
-    }
+    scheduler = get_scheduler()
+    return analytics_builder.build_analytics_payload(store, scheduler, task_id)

@@ -1,19 +1,7 @@
-import { createContext, useContext, useState, useCallback, type ReactNode, useEffect, useRef } from 'react';
+// 这个组件负责渲染全局 Toast 提示，Toast 上下文和 hook 拆在独立文件中。
 
-type ToastType = 'success' | 'error' | 'info' | 'warning';
-
-interface ToastItem {
-  id: number;
-  message: string;
-  type: ToastType;
-  exiting?: boolean;
-}
-
-interface ToastContextValue {
-  toast: (message: string, type?: ToastType) => void;
-}
-
-const ToastContext = createContext<ToastContextValue>({ toast: () => {} });
+import { useState, useCallback, type ReactNode, useEffect, useRef } from 'react';
+import { ToastContext, type ToastItem, type ToastType } from './toastContext';
 
 let nextId = 0;
 
@@ -34,17 +22,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [remove]);
 
   useEffect(() => {
-    return () => { timers.current.forEach(t => clearTimeout(t)); };
+    const activeTimers = timers.current;
+    return () => { activeTimers.forEach(t => clearTimeout(t)); };
   }, []);
 
   const icons: Record<ToastType, string> = {
     success: '✓', error: '✕', info: 'ℹ', warning: '⚠',
   };
   const colors: Record<ToastType, string> = {
-    success: 'border-green-600/40 bg-green-900/20 text-green-300',
-    error: 'border-red-600/40 bg-red-900/20 text-red-300',
-    info: 'border-cyan-600/40 bg-cyan-900/20 text-cyan-300',
-    warning: 'border-amber-600/40 bg-amber-900/20 text-amber-300',
+    success: 'border-green-200 bg-green-50 text-green-800',
+    error: 'border-red-200 bg-red-50 text-red-800',
+    info: 'border-teal-200 bg-teal-50 text-teal-800',
+    warning: 'border-amber-200 bg-amber-50 text-amber-800',
   };
 
   return (
@@ -54,7 +43,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map(t => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-mono shadow-lg backdrop-blur-sm transition-all duration-300 ${
+            className={`pointer-events-auto flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-lg backdrop-blur-sm transition-all duration-300 ${
               t.exiting ? 'opacity-0 translate-x-8 scale-95' : 'opacity-100 translate-x-0 animate-toastIn'
             } ${colors[t.type]}`}
           >
@@ -66,8 +55,4 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       </div>
     </ToastContext.Provider>
   );
-}
-
-export function useToast() {
-  return useContext(ToastContext);
 }

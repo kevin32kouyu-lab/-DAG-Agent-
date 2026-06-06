@@ -1,3 +1,5 @@
+// 这个组件把功能成熟度和差异化信息展示成矩阵。
+
 import { COLORS } from './chartTheme';
 import type { FeatureAnalytics } from '../../types';
 
@@ -34,22 +36,23 @@ export default function FeatureHeatmap({ data, mode }: FeatureHeatmapProps) {
         {[...grouped.entries()].map(([cat, catFeatures]) => (
           <tbody key={cat}>
             <tr>
-              <td colSpan={products.length + 1} className="pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <td colSpan={products.length + 1} className="pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                 {cat}
               </td>
             </tr>
             {catFeatures.map(f => (
-              <tr key={f.feature_name} className="border-b border-gray-800/30">
-                <td className="hm-header text-left font-normal text-gray-400">{f.feature_name}</td>
+              <tr key={f.feature_name} className="border-b border-slate-100">
+                <td className="hm-header text-left font-normal text-slate-600">{f.feature_name}</td>
                 {products.map(p => {
                   const key = `${p}_${mode}`;
                   const val = (f[key] || 'unknown').toLowerCase();
                   const bg = colorMap[val] || colorMap.unknown;
+                  const darkText = ['#d97706'].includes(bg);
                   return (
                     <td key={p} className="text-center py-1">
                       <span
                         className="inline-block px-2 py-0.5 rounded text-[11px] font-medium"
-                        style={{ background: bg, color: bg === '#fbbf24' ? '#1e293b' : '#fff' }}
+                        style={{ background: bg, color: darkText ? '#1e293b' : '#fff' }}
                       >
                         {val}
                       </span>
