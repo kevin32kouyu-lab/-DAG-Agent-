@@ -65,7 +65,7 @@ def build_analytics_payload(store, scheduler, task_id: str) -> dict:
             scoring = derive_scoring(products, features, sentiment, pricing, swot)
             if scoring:
                 warnings.append("当前任务没有结构化评分节点，维度评分由已有结构化数据推断。")
-    else:
+    elif sections:
         fallback = build_report_fallback(products, sections)
         if payload_has_chart_data(fallback):
             features = fallback["features"]

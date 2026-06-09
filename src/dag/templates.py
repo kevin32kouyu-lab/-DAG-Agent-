@@ -1,4 +1,8 @@
-"""工作流模板定义：把竞品分析场景拆成稳定的 DAG 节点规格。"""
+"""工作流模板定义：把竞品分析场景拆成稳定的 DAG 节点规格。
+
+重构后使用 4 个 Agent 类（Collector, Analyst, Writer, QA），
+DAG 上保留 8 个节点以支持独立重试和可视化。
+"""
 
 from __future__ import annotations
 
@@ -62,8 +66,7 @@ class WorkflowTemplateRegistry:
 
 
 def _default_source_policy() -> dict[str, Any]:
-    """默认公开来源策略，后续可接入更细的数据源状态。"""
-
+    """默认公开来源策略。"""
     return {
         "preferred": ["official_site", "pricing_page", "docs", "reviews", "news"],
         "allow_cache": True,
@@ -73,152 +76,217 @@ def _default_source_policy() -> dict[str, Any]:
 
 def _standard_degradation_policy() -> dict[str, Any]:
     """默认降级策略：单点失败不阻塞整份报告。"""
-
     return {
-        "max_failures_before_degraded": 2,
+        "max_failures_before_degraded": 3,
         "continue_on_partial_data": True,
         "mark_low_confidence": True,
     }
 
 
-def _shared_pipeline_nodes(scenario: WorkflowScenario) -> list[WorkflowNodeSpec]:
-    """生成 SaaS 和 App 共用的主流程节点。"""
+def _demo_pipeline_nodes() -> list[WorkflowNodeSpec]:
+    """Demo 模板的精简管线（6 节点，跳过 cross_review/QA）。
 
-    scenario_label = "SaaS" if scenario == WorkflowScenario.SAAS else "App"
+    设计目标：配合 ``TOOL_CACHE_MODE=force_cache`` 在 5 分钟内出报告，用于路演录制。
+    - 跳过 techstack 维度（4 维度足够呈现核心对比）
+    - 跳过 cross_review + qa（节省 30-60s）
+    - 所有 Analyst 节点并行依赖 Collector
+    """
     return [
-        WorkflowNodeSpec(
-            node_id="source_discovery",
-            agent_type="SourceDiscovery",
-            stage="collection",
-            role_group="research",
-            display_name="信息源发现",
-            description=f"发现 {scenario_label} 竞品分析需要采集的公开信息源。",
-            output_contract="AgentOutput",
-            source_policy=_default_source_policy(),
-            degradation_policy=_standard_degradation_policy(),
-        ),
+        # ── URL 发现层 ──
         WorkflowNodeSpec(
             node_id="collector",
             agent_type="Collector",
             stage="collection",
             role_group="research",
-            display_name="公开资料采集",
-            description="采集官网、价格页、帮助文档、新闻和公开评论。",
-            depends_on=["source_discovery"],
+            display_name="URL 发现",
+            description="搜索每个目标产品的官网/定价/评测页 URL，写入 SourceInfo 节点。",
             output_contract="AgentOutput",
             source_policy=_default_source_policy(),
             degradation_policy=_standard_degradation_policy(),
+            max_retries=2,
         ),
-        WorkflowNodeSpec(
-            node_id="data_enricher",
-            agent_type="DataEnricher",
-            stage="structuring",
-            role_group="research",
-            display_name="资料结构化",
-            description="把原始资料整理成后续分析可复用的结构化知识。",
-            depends_on=["collector"],
-            output_contract="AgentOutput",
-            degradation_policy=_standard_degradation_policy(),
-        ),
+        # ── 分析层：4 维度并行 ──
         WorkflowNodeSpec(
             node_id="feature_analysis",
-            agent_type="FeatureAnalyzer",
+            agent_type="Analyst",
             stage="analysis",
             role_group="analysis",
             display_name="功能对比分析",
-            description="提取功能树和功能矩阵。",
-            depends_on=["data_enricher"],
-            output_contract="FeatureMatrixOutput",
+            description="抓取官网功能页，识别核心功能、成熟度、差异点。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "feature"},
+            max_retries=2,
         ),
         WorkflowNodeSpec(
             node_id="pricing_analysis",
-            agent_type="PricingAnalyst",
+            agent_type="Analyst",
             stage="analysis",
             role_group="analysis",
             display_name="定价与商业模式分析",
-            description="分析价格、套餐、商业化方式和目标客群。",
-            depends_on=["data_enricher"],
-            output_contract="PricingOutput",
+            description="抓取定价页，识别套餐、价格、目标客群。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "pricing"},
+            max_retries=2,
         ),
         WorkflowNodeSpec(
             node_id="sentiment_analysis",
-            agent_type="SentimentAnalyzer",
+            agent_type="Analyst",
             stage="analysis",
             role_group="analysis",
             display_name="用户口碑分析",
-            description="分析评论、社媒和公开反馈中的情绪与痛点。",
-            depends_on=["data_enricher"],
-            output_contract="SentimentOutput",
-        ),
-        WorkflowNodeSpec(
-            node_id="techstack_analysis",
-            agent_type="TechStackAnalyzer",
-            stage="analysis",
-            role_group="analysis",
-            display_name="技术与生态分析",
-            description="从公开资料中推断技术栈、集成生态和平台能力。",
-            depends_on=["data_enricher"],
-            output_contract="TechStackOutput",
+            description="纯 API 拉 Reddit / Product Hunt / 小红书等用户讨论。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "sentiment"},
+            max_retries=2,
         ),
         WorkflowNodeSpec(
             node_id="market_position",
-            agent_type="MarketPositionAnalyzer",
+            agent_type="Analyst",
             stage="analysis",
             role_group="analysis",
             display_name="市场定位分析",
-            description="分析定位、目标用户、差异化和增长策略。",
-            depends_on=["feature_analysis", "pricing_analysis", "sentiment_analysis"],
-            output_contract="MarketPositionOutput",
+            description="新闻 + 搜索趋势 API 推断定位、GTM 策略、竞争格局。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "market_position"},
+            max_retries=2,
         ),
-        WorkflowNodeSpec(
-            node_id="cross_review",
-            agent_type="CrossReviewAgent",
-            stage="review",
-            role_group="quality",
-            display_name="交叉审查",
-            description="检查不同分析 Agent 之间的冲突、遗漏和低可信结论。",
-            depends_on=["feature_analysis", "pricing_analysis", "sentiment_analysis", "techstack_analysis", "market_position"],
-            output_contract="CrossReviewOutput",
-        ),
-        WorkflowNodeSpec(
-            node_id="swot",
-            agent_type="SWOTAnalyzer",
-            stage="synthesis",
-            role_group="analysis",
-            display_name="SWOT 综合",
-            description="综合功能、定价、口碑和市场定位形成 SWOT。",
-            depends_on=["cross_review"],
-            output_contract="SWOTOutput",
-        ),
+        # ── 合成层：Writer ──
         WorkflowNodeSpec(
             node_id="report",
             agent_type="ReportGenerator",
             stage="reporting",
             role_group="reporting",
             display_name="报告生成",
-            description="基于知识图谱中的结构化结果生成竞品分析报告。",
-            depends_on=["swot"],
+            description="综合 4 维度分析，生成竞品对比报告。",
+            depends_on=[
+                "feature_analysis", "pricing_analysis",
+                "sentiment_analysis", "market_position",
+            ],
+            output_contract="ReportOutput",
+            max_retries=1,
+        ),
+    ]
+
+
+def _shared_pipeline_nodes(scenario: WorkflowScenario) -> list[WorkflowNodeSpec]:
+    """生成 SaaS 和 App 共用的主流程节点（8 节点，4 个 Agent 类）。"""
+
+    scenario_label = "SaaS" if scenario == WorkflowScenario.SAAS else "App"
+    return [
+        # ── 采集层：Collector Agent ──
+        WorkflowNodeSpec(
+            node_id="collector",
+            agent_type="Collector",
+            stage="collection",
+            role_group="research",
+            display_name="信息采集",
+            description=f"发现 {scenario_label} 竞品信息源、抓取网页数据、结构化抽取到知识图谱。",
+            output_contract="AgentOutput",
+            source_policy=_default_source_policy(),
+            degradation_policy=_standard_degradation_policy(),
+        ),
+        # ── 分析层：Analyst Agent × 5 个维度 ──
+        WorkflowNodeSpec(
+            node_id="feature_analysis",
+            agent_type="Analyst",
+            stage="analysis",
+            role_group="analysis",
+            display_name="功能对比分析",
+            description="提取功能树和功能矩阵。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "feature"},
+            max_retries=2,
+        ),
+        WorkflowNodeSpec(
+            node_id="pricing_analysis",
+            agent_type="Analyst",
+            stage="analysis",
+            role_group="analysis",
+            display_name="定价与商业模式分析",
+            description="分析价格、套餐、商业化方式和目标客群。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "pricing"},
+            max_retries=2,
+        ),
+        WorkflowNodeSpec(
+            node_id="sentiment_analysis",
+            agent_type="Analyst",
+            stage="analysis",
+            role_group="analysis",
+            display_name="用户口碑分析",
+            description="分析评论、社媒和公开反馈中的情绪与痛点。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "sentiment"},
+            max_retries=2,
+        ),
+        WorkflowNodeSpec(
+            node_id="techstack_analysis",
+            agent_type="Analyst",
+            stage="analysis",
+            role_group="analysis",
+            display_name="技术与生态分析",
+            description="从公开资料中推断技术栈、集成生态和平台能力。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "techstack"},
+            max_retries=2,
+        ),
+        WorkflowNodeSpec(
+            node_id="market_position",
+            agent_type="Analyst",
+            stage="analysis",
+            role_group="analysis",
+            display_name="市场定位分析",
+            description="分析定位、目标用户、差异化和增长策略。",
+            depends_on=["collector"],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "market_position"},
+            max_retries=2,
+        ),
+        # ── 审查层：Analyst Agent（cross_review 维度）──
+        WorkflowNodeSpec(
+            node_id="cross_review",
+            agent_type="Analyst",
+            stage="review",
+            role_group="quality",
+            display_name="交叉审查",
+            description="检查不同分析维度之间的冲突、遗漏和低可信结论。",
+            depends_on=[
+                "feature_analysis", "pricing_analysis",
+                "sentiment_analysis", "techstack_analysis", "market_position",
+            ],
+            output_contract="AgentOutput",
+            input_defaults={"dimension": "cross_review"},
+            max_retries=1,
+        ),
+        # ── 合成层：Writer Agent ──
+        WorkflowNodeSpec(
+            node_id="report",
+            agent_type="ReportGenerator",
+            stage="reporting",
+            role_group="reporting",
+            display_name="报告生成",
+            description="综合 SWOT 分析，生成竞品分析报告。",
+            depends_on=["cross_review"],
             output_contract="ReportOutput",
         ),
+        # ── 质检层：QA Agent ──
         WorkflowNodeSpec(
-            node_id="qa_fact_check",
-            agent_type="QA_FactCheck",
+            node_id="qa",
+            agent_type="QA",
             stage="qa",
             role_group="quality",
-            display_name="事实校验",
-            description="检查报告事实是否有证据支撑。",
+            display_name="质检校验",
+            description="事实校验 + 逻辑校验，确保报告质量。",
             depends_on=["report"],
-            output_contract="AgentOutput",
-        ),
-        WorkflowNodeSpec(
-            node_id="qa_logic_check",
-            agent_type="QA_LogicCheck",
-            stage="qa",
-            role_group="quality",
-            display_name="逻辑校验",
-            description="检查报告结论是否存在逻辑矛盾或推理断层。",
-            depends_on=["qa_fact_check"],
-            output_contract="AgentOutput",
+            output_contract="QAOutput",
         ),
     ]
 
@@ -242,4 +310,12 @@ def get_default_template_registry() -> WorkflowTemplateRegistry:
         nodes=_shared_pipeline_nodes(WorkflowScenario.APP),
         metadata={"default_depth": "standard"},
     )
-    return WorkflowTemplateRegistry([saas, app])
+    demo = WorkflowTemplate(
+        template_id="demo_competitor_analysis",
+        name="Demo 快速竞品分析（5 分钟）",
+        scenario=WorkflowScenario.SAAS,
+        description="录制 demo 用：4 维度并行，跳过 cross_review/QA，配合缓存 5 分钟出报告。",
+        nodes=_demo_pipeline_nodes(),
+        metadata={"default_depth": "demo", "expected_duration_seconds": 180},
+    )
+    return WorkflowTemplateRegistry([saas, app, demo])

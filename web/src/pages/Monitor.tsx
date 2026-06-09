@@ -11,15 +11,10 @@ import type { AgentState, AgentGroup, DAGNode, WSEvent, NodeState, AgentType } f
 /* ---- agent grouping ---- */
 
 const GROUP_CONFIG: AgentGroup[] = [
-  { role: 'Orchestrator', agentTypes: ['Orchestrator'], variant: 'single', description: '任务指挥官 — 生成 DAG' },
-  { role: 'Source Discovery', agentTypes: ['SourceDiscovery'], variant: 'single', description: '信息源侦察 — 搜索可信 URL' },
-  { role: 'Collector Group', agentTypes: ['Collector'], variant: 'collection', description: '并行采集 — 网页抓取' },
-  { role: 'Data Enricher', agentTypes: ['DataEnricher'], variant: 'single', description: '语境补充 — 关联第三方数据' },
-  { role: 'Analysis Layer', agentTypes: ['FeatureAnalyzer', 'SentimentAnalyzer', 'PricingAnalyst', 'TechStackAnalyzer', 'MarketPositionAnalyzer'], variant: 'analysis', description: '分析 Agent — 等待采集完成' },
-  { role: 'Cross-Review', agentTypes: ['CrossReviewAgent'], variant: 'single', description: '水平交叉审查 — 检测分析矛盾' },
-  { role: 'SWOT Synthesizer', agentTypes: ['SWOTAnalyzer'], variant: 'swot', description: '战略综合 — 聚合所有分析' },
-  { role: 'Report Generator', agentTypes: ['ReportGenerator'], variant: 'single', description: '报告撰写 — 生成 Markdown' },
-  { role: 'QA Group', agentTypes: ['QA_FactCheck', 'QA_LogicCheck'], variant: 'qa', description: '双 QA 审查 — 事实 + 逻辑' },
+  { role: '信息采集', agentTypes: ['Collector'], variant: 'collection', description: '三阶段采集 — 源发现 + 抓取 + 结构化' },
+  { role: '分析层', agentTypes: ['Analyst'], variant: 'analysis', description: '5 维度并行分析 + 交叉审查' },
+  { role: '报告撰写', agentTypes: ['ReportGenerator'], variant: 'single', description: 'SWOT 综合 + 报告生成' },
+  { role: '质检', agentTypes: ['QA'], variant: 'qa', description: '事实校验 + 逻辑校验' },
 ];
 
 function groupAgents(agents: Map<string, AgentState>): { group: AgentGroup; agents: AgentState[] }[] {

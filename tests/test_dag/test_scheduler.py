@@ -186,7 +186,7 @@ async def test_scheduler_logs_checkpoint_timeout(monkeypatch, caplog):
             return None
 
     monkeypatch.setattr("src.dag.scheduler.CHECKPOINT_TIMEOUT", 0.01)
-    n1 = DAGNode(node_id="source", agent_type="SourceDiscovery", input_query={}, depends_on=[])
+    n1 = DAGNode(node_id="collector", agent_type="Collector", input_query={}, depends_on=[])
     dag = TaskDAG(task_id="task_checkpoint_timeout", nodes=[n1])
     scheduler = DAGScheduler(review_mode=True)
 

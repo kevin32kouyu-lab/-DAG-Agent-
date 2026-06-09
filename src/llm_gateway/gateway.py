@@ -28,7 +28,7 @@ class LLMGateway:
     ):
         self.default_model = default_model
         self.model_map = model_map or {
-            "reasoning": "claude-opus-4-7",
+            "reasoning": "claude-opus-4-8",
             "analysis": "claude-sonnet-4-6",
             "batch": "claude-haiku-4-5",
         }
@@ -68,7 +68,12 @@ class LLMGateway:
         model: str | None = None,
         agent_type: str | None = None,
         max_tokens: int = 4096,
-        temperature: float = 0.3,
+        temperature: float | None = 0.3,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        thinking: dict[str, Any] | None = None,
+        output_config: dict[str, Any] | None = None,
+        output_schema: dict[str, Any] | None = None,
         response_format: dict[str, str] | None = None,
         skip_cache: bool = False,
     ) -> LLMResponse:
@@ -88,7 +93,18 @@ class LLMGateway:
         if provider == "openai_compatible":
             resp = await self._chat_openai(resolved, system, messages, max_tokens, temperature, response_format)
         else:
-            resp = await self._chat_anthropic(resolved, system, messages, max_tokens, temperature)
+            resp = await self._chat_anthropic(
+                resolved,
+                system,
+                messages,
+                max_tokens,
+                temperature,
+                top_p=top_p,
+                top_k=top_k,
+                thinking=thinking,
+                output_config=output_config,
+                output_schema=output_schema,
+            )
 
         # Cache the response and track cost (skip caching when skip_cache=True)
         if not skip_cache:
@@ -97,15 +113,58 @@ class LLMGateway:
         self.cost_tracker.record(ag, resp.tokens_in + resp.tokens_out, resp.cost)
         return resp
 
-    async def _chat_anthropic(self, model: str, system: str, messages: list[dict],
-                              max_tokens: int, temperature: float) -> LLMResponse:
+    async def _chat_anthropic(
+        self,
+        model: str,
+        system: str,
+        messages: list[dict],
+        max_tokens: int,
+        temperature: float | None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        thinking: dict[str, Any] | None = None,
+        output_config: dict[str, Any] | None = None,
+        output_schema: dict[str, Any] | None = None,
+    ) -> LLMResponse:
         client = self._get_anthropic()
-        resp = await client.messages.create(
-            model=model, system=system, messages=messages,
-            max_tokens=max_tokens, temperature=temperature,
-        )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "system": system,
+            "messages": messages,
+            "max_tokens": max_tokens,
+        }
+        if not self._is_anthropic_opus_47_or_later(model):
+            if temperature is not None:
+                kwargs["temperature"] = temperature
+            if top_p is not None:
+                kwargs["top_p"] = top_p
+            if top_k is not None:
+                kwargs["top_k"] = top_k
+        if thinking is not None:
+            kwargs["thinking"] = self._normalize_anthropic_thinking(model, thinking)
+        if output_config is not None and output_schema is not None:
+            raise ValueError("output_config and output_schema are mutually exclusive")
+        if output_schema is not None:
+            kwargs["output_config"] = {
+                "format": {"type": "json_schema", "schema": output_schema}
+            }
+        elif output_config is not None:
+            kwargs["output_config"] = output_config
+        resp = await client.messages.create(**kwargs)
+        # Handle both TextBlock and ThinkingBlock responses
+        content_text = ""
+        if resp.content:
+            for block in resp.content:
+                # Prefer TextBlock, but fallback to ThinkingBlock if no TextBlock found
+                if hasattr(block, 'text'):
+                    content_text = block.text
+                    break
+                elif hasattr(block, 'thinking'):
+                    # ThinkingBlock - use thinking content as fallback
+                    if not content_text:
+                        content_text = block.thinking
         return LLMResponse(
-            content=resp.content[0].text if resp.content else "",
+            content=content_text,
             model=model,
             tokens_in=resp.usage.input_tokens if resp.usage else 0,
             tokens_out=resp.usage.output_tokens if resp.usage else 0,
@@ -137,15 +196,29 @@ class LLMGateway:
         return not model.startswith("ep-")
 
     @staticmethod
+    def _is_anthropic_opus_47_or_later(model: str) -> bool:
+        normalized = model.removeprefix("anthropic.")
+        return normalized in {"claude-opus-4-7", "claude-opus-4-8"}
+
+    @staticmethod
+    def _normalize_anthropic_thinking(model: str, thinking: dict[str, Any]) -> dict[str, Any]:
+        if LLMGateway._is_anthropic_opus_47_or_later(model):
+            if thinking.get("type") == "enabled":
+                return {"type": "adaptive"}
+        return thinking
+
+    @staticmethod
     def _estimate_cost(model: str, usage: Any) -> float:
         if usage is None:
             return 0.0
         input_tokens = getattr(usage, "input_tokens", 0) or 0
         output_tokens = getattr(usage, "output_tokens", 0) or 0
         pricing = {
-            "claude-opus-4-7": (15 / 1_000_000, 75 / 1_000_000),
+            "claude-opus-4-8": (5 / 1_000_000, 25 / 1_000_000),
+            "claude-opus-4-7": (5 / 1_000_000, 25 / 1_000_000),
+            "claude-opus-4-6": (5 / 1_000_000, 25 / 1_000_000),
             "claude-sonnet-4-6": (3 / 1_000_000, 15 / 1_000_000),
-            "claude-haiku-4-5": (0.8 / 1_000_000, 4 / 1_000_000),
+            "claude-haiku-4-5": (1 / 1_000_000, 5 / 1_000_000),
         }
         in_price, out_price = pricing.get(model, (3 / 1_000_000, 15 / 1_000_000))
         return input_tokens * in_price + output_tokens * out_price

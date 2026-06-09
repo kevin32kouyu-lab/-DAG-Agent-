@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from src.api.deps import get_store, get_gateway, get_scheduler, get_audit_logger
 from src.agents.orchestrator import OrchestratorAgent
 from src.agents.tools.base import ToolRegistry
@@ -13,7 +13,6 @@ from src.agents.tools.graph_tools import GraphQueryTool, GraphWriteTool
 from src.agents.tools.web_tools import WebScrapeTool, WebSearchTool, BatchWebScrapeTool
 from src.agents.tools.api_tools import ThirdPartyAPITool
 from src.agents.tools.company_scope import CompanyScopeTool
-from src.agents.tools.tavily_tool import TavilySearchTool
 from src.agents.tools.wayback_tool import WaybackTool
 from src.dag.compiler import WorkflowCompileRequest, WorkflowCompiler
 from src.dag.executor import AgentExecutor
@@ -27,15 +26,15 @@ class CreateTaskRequest(BaseModel):
     targets: list[str]
     industry: str = "saas"
     planning_mode: str = "template"
-    dimensions: list[dict] = []
-    exclude_dimensions: list[str] = []
-    focus_points: dict[str, list[str]] = {}
-    dimension_weights: dict[str, float] = {}
-    source_preferences: dict = {}
+    dimensions: list[dict] = Field(default_factory=list)
+    exclude_dimensions: list[str] = Field(default_factory=list)
+    focus_points: dict[str, list[str]] = Field(default_factory=dict)
+    dimension_weights: dict[str, float] = Field(default_factory=dict)
+    source_preferences: dict = Field(default_factory=dict)
     benchmark_product: str | None = None
     report_audience: str = "product_manager"
-    report_sections: list[str] = []
-    output_formats: list[str] = ["markdown"]
+    report_sections: list[str] = Field(default_factory=list)
+    output_formats: list[str] = Field(default_factory=lambda: ["markdown"])
     execution_mode: str = "auto"
     collection_depth: str = "standard"
     model_preference: str = "auto"
@@ -44,7 +43,7 @@ class CreateTaskRequest(BaseModel):
 class TaskResponse(BaseModel):
     task_id: str
     status: str
-    dag_nodes: list[dict] = []
+    dag_nodes: list[dict] = Field(default_factory=list)
     ws_endpoint: str = ""
 
 
@@ -56,7 +55,20 @@ def _build_tools(store, req: CreateTaskRequest | None = None):
     tools.register(WebScrapeTool)
     tools.register(BatchWebScrapeTool)
     tools.register(WebSearchTool)
-    tools.register(TavilySearchTool)
+    from src.agents.tools.npm_tool import NpmTool
+    from src.agents.tools.pypi_tool import PyPITool
+    from src.agents.tools.yfinance_tool import YFinanceTool
+    tools.register(NpmTool)
+    tools.register(PyPITool)
+    tools.register(YFinanceTool)
+    from src.agents.tools.firecrawl_tool import FirecrawlTool
+    from src.agents.tools.newsapi_tool import NewsAPITool
+    from src.agents.tools.gitee_tool import GiteeTool
+    from src.agents.tools.serper_tool import SerperSearchTool
+    tools.register(FirecrawlTool)
+    tools.register(NewsAPITool)
+    tools.register(GiteeTool)
+    tools.register(SerperSearchTool)
     tools.register(ThirdPartyAPITool)
     tools.register(CompanyScopeTool)
     tools.register(WaybackTool)
@@ -196,6 +208,34 @@ async def create_task(req: CreateTaskRequest):
     )
 
 
+def _task_status(dag) -> str:
+    states = {n.state for n in dag.nodes}
+    if all(s in {NodeState.COMPLETED, NodeState.DEGRADED} for s in states):
+        return "completed"
+    if any(s == NodeState.FAILED for s in states):
+        return "failed"
+    if any(s == NodeState.RUNNING for s in states):
+        return "running"
+    if any(s == NodeState.READY for s in states):
+        return "in_progress"
+    return "pending"
+
+
+def _node_view(node) -> dict:
+    return {
+        "node_id": node.node_id,
+        "agent_type": node.agent_type,
+        "state": node.state.value if hasattr(node.state, "value") else str(node.state),
+        "depends_on": node.depends_on,
+        "stage": getattr(node, "stage", ""),
+        "role_group": getattr(node, "role_group", ""),
+        "display_name": getattr(node, "display_name", ""),
+        "description": getattr(node, "description", ""),
+        "retries": node.retries,
+        "max_retries": node.max_retries,
+    }
+
+
 @router.get("/task/{task_id}")
 async def get_task(task_id: str):
     scheduler = get_scheduler()
@@ -205,21 +245,14 @@ async def get_task(task_id: str):
         if error is not None:
             return {"task_id": task_id, "status": "failed", "error": error}
         raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
-    states = {n.state for n in dag.nodes}
-    if all(s in {NodeState.COMPLETED, NodeState.DEGRADED} for s in states):
-        status = "completed"
-    elif any(s == NodeState.FAILED for s in states):
-        status = "failed"
-    elif any(s == NodeState.RUNNING for s in states):
-        status = "running"
-    elif any(s == NodeState.READY for s in states):
-        status = "in_progress"
-    else:
-        status = "pending"
     return {
         "task_id": task_id,
-        "status": status,
-        "nodes": [{"node_id": n.node_id, "agent_type": n.agent_type, "state": n.state} for n in dag.nodes],
+        "status": _task_status(dag),
+        "workflow_template_id": getattr(dag, "workflow_template_id", ""),
+        "scenario": getattr(dag, "scenario", ""),
+        "targets": getattr(dag, "targets", []),
+        "metadata": getattr(dag, "metadata", {}),
+        "nodes": [_node_view(n) for n in dag.nodes],
     }
 
 
@@ -249,9 +282,9 @@ async def get_task_sources(task_id: str):
     urls_set = set()
     import re
     
-    # 1. Try to extract from SourceDiscovery node's _output_data or context
+    # 1. Try to extract from Collector node's _output_data or context
     for node in dag.nodes:
-        if node.agent_type == "SourceDiscovery":
+        if node.agent_type == "Collector":
             output_data = node.context.get("_output_data", {})
             if output_data:
                 # Helper function to recursively extract urls from any nested structures

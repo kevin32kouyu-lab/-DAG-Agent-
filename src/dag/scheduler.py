@@ -8,12 +8,12 @@ from src.dag.feedback import FeedbackHandler
 
 logger = logging.getLogger(__name__)
 
-CHECKPOINT_AGENT = "SourceDiscovery"
+CHECKPOINT_AGENT = "Collector"
 CHECKPOINT_TIMEOUT = 30 * 60  # 30 minutes auto-release
 NODE_TIMEOUT = 300  # per-node timeout in seconds (5 min)
 
-QA_AGENT_TYPES = {"QA_FactCheck", "QA_LogicCheck"}
-CROSS_REVIEW_AGENT = "CrossReviewAgent"
+QA_AGENT_TYPES = {"QA"}
+CROSS_REVIEW_NODE_ID = "cross_review"
 
 
 class DAGScheduler:
@@ -156,32 +156,51 @@ class DAGScheduler:
             # Feedback: check QA output for failed nodes
             if node.agent_type in QA_AGENT_TYPES:
                 output_data = node.context.get("_output_data", {})
-                failed_nodes = output_data.get("failed_nodes", [])
-                if failed_nodes:
-                    next_round = node.qa_round + 1
-                    affected = self.feedback.handle_qa_rejection(
-                        dag, qa_node_id=node.node_id,
-                        failed_nodes=failed_nodes,
-                        reasons=output_data.get("issues", []),
-                        qa_round=next_round,
-                    )
-                    if affected:
-                        await self._emit("qa_reject",
-                            dag.task_id, node.agent_type,
-                            failed_nodes,
-                            output_data.get("issues", []),
-                            list(affected), next_round,
+                overall_pass = output_data.get("overall_pass", True)
+                if not overall_pass:
+                    # 从 fact_issues 和 logic_issues 中提取失败节点
+                    fact_issues = output_data.get("fact_issues", [])
+                    logic_issues = output_data.get("logic_issues", [])
+                    all_issues = fact_issues + logic_issues
+                    failed_nodes = [
+                        issue.get("node_id", "")
+                        for issue in all_issues
+                        if issue.get("node_id")
+                    ]
+                    failed_nodes = sorted(set(failed_nodes))
+                    reasons = [
+                        issue.get("reason", "") or issue.get("description", "")
+                        for issue in all_issues
+                    ]
+                    if not failed_nodes:
+                        # 如果没有具体 node_id，打回 Writer
+                        report_nodes = [n.node_id for n in dag.nodes if n.agent_type == "ReportGenerator"]
+                        failed_nodes = report_nodes
+                    if failed_nodes:
+                        next_round = node.qa_round + 1
+                        affected = self.feedback.handle_qa_rejection(
+                            dag, qa_node_id=node.node_id,
+                            failed_nodes=failed_nodes,
+                            reasons=reasons,
+                            qa_round=next_round,
                         )
-                        await self._emit("feedback_applied", {
-                            "task_id": dag.task_id,
-                            "type": "qa_rejection",
-                            "qa_node_id": node.node_id,
-                            "round": next_round,
-                            "affected_nodes": list(affected),
-                        })
+                        if affected:
+                            await self._emit("qa_reject",
+                                dag.task_id, node.agent_type,
+                                failed_nodes,
+                                reasons,
+                                list(affected), next_round,
+                            )
+                            await self._emit("feedback_applied", {
+                                "task_id": dag.task_id,
+                                "type": "qa_rejection",
+                                "qa_node_id": node.node_id,
+                                "round": next_round,
+                                "affected_nodes": list(affected),
+                            })
 
             # Feedback: check CrossReview output for high-severity flags
-            if node.agent_type == CROSS_REVIEW_AGENT:
+            if node.node_id == CROSS_REVIEW_NODE_ID:
                 output_data = node.context.get("_output_data", {})
                 flags = output_data.get("flags", [])
                 high_flags = [f for f in flags if f.get("severity") == "high"]

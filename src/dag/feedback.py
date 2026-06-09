@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class FeedbackHandler:
-    MAX_QA_ROUNDS = 2
+    MAX_QA_ROUNDS = 1
     MAX_CROSS_REVIEW_ROUNDS = 1
 
     def __init__(self, audit_logger=None):
@@ -36,19 +36,20 @@ class FeedbackHandler:
             })
             return set()
 
-        # Trace upstream (dependencies) + downstream (consumers of failed nodes)
+        # 只重置 Writer 节点，让 Writer 用现有分析数据重新生成报告
+        # 不重置上游分析节点，避免全链路重跑
         affected: set[str] = set()
-        for nid in failed_nodes:
-            affected.add(nid)
-            affected.update(dag.trace_upstream(nid))
-            affected.update(dag.trace_downstream(nid))
-
-        # Reset affected nodes to PENDING
-        for nid in affected:
-            node = dag.get_node(nid)
-            if node and node.state == NodeState.COMPLETED:
+        report_nodes = [n for n in dag.nodes if n.agent_type == "ReportGenerator"]
+        for node in report_nodes:
+            if node.state in {NodeState.COMPLETED, NodeState.DEGRADED, NodeState.FAILED}:
                 node.state = NodeState.PENDING
                 node.retries = 0
+                affected.add(node.node_id)
+
+        # 如果 QA 节点本身也需要重置
+        qa_node.state = NodeState.PENDING
+        qa_node.retries = 0
+        affected.add(qa_node.node_id)
 
         self._audit("qa_rejected", {
             "qa_agent": qa_node.agent_type,
@@ -65,42 +66,41 @@ class FeedbackHandler:
                                        flags: list[dict]) -> set[str]:
         affected_nodes: set[str] = set()
 
-        # High severity: reset involved agents + upstream, consume retry budget
+        # High severity: only reset the specific analysis node, NOT the entire upstream chain
         high_flags = [f for f in flags if f.get("severity") == "high"]
         if high_flags:
-            affected_agents: set[str] = set()
+            affected_node_ids: set[str] = set()
             for flag in high_flags:
+                for nid in flag.get("involved_node_ids", []):
+                    affected_node_ids.add(nid)
                 for agent_type in flag.get("involved_agents", []):
-                    affected_agents.add(agent_type)
+                    for node in dag.find_nodes_by_agent(agent_type):
+                        affected_node_ids.add(node.node_id)
 
-            for agent_type in affected_agents:
-                for node in dag.find_nodes_by_agent(agent_type):
-                    if node.cross_review_retries >= self.MAX_CROSS_REVIEW_ROUNDS:
-                        node.state = NodeState.DEGRADED
-                        node.context["cross_review_flags"] = [
-                            f for f in high_flags
-                            if agent_type in f.get("involved_agents", [])
-                        ]
-                        affected_nodes.add(node.node_id)
-                        continue
-                    node.state = NodeState.PENDING
-                    node.cross_review_retries += 1
+            for nid in affected_node_ids:
+                node = dag.get_node(nid)
+                if not node:
+                    continue
+                if node.cross_review_retries >= self.MAX_CROSS_REVIEW_ROUNDS:
+                    node.state = NodeState.DEGRADED
                     node.context["cross_review_flags"] = [
                         f for f in high_flags
-                        if agent_type in f.get("involved_agents", [])
+                        if nid in f.get("involved_node_ids", [])
+                        or node.agent_type in f.get("involved_agents", [])
                     ]
-                    # Also reset upstream dependencies
-                    upstream = dag.trace_upstream(node.node_id)
-                    for uid in upstream:
-                        up_node = dag.get_node(uid)
-                        if up_node and up_node.state == NodeState.COMPLETED:
-                            up_node.state = NodeState.PENDING
-                            affected_nodes.add(uid)
                     affected_nodes.add(node.node_id)
+                    continue
+                node.state = NodeState.PENDING
+                node.cross_review_retries += 1
+                node.context["cross_review_flags"] = [
+                    f for f in high_flags
+                    if nid in f.get("involved_node_ids", [])
+                    or node.agent_type in f.get("involved_agents", [])
+                ]
+                affected_nodes.add(node.node_id)
 
             self._audit("cross_review_rejected", {
                 "flags": high_flags,
-                "affected_agents": list(affected_agents),
                 "affected_nodes": list(affected_nodes),
             })
 
@@ -110,14 +110,19 @@ class FeedbackHandler:
             if f.get("severity") == "medium" and f.get("flag_type") == "omission"
         ]
         for flag in omission_flags:
+            target_node_id = flag.get("target_node_id", "")
             target_agent = flag.get("target_agent", "")
-            if not target_agent:
-                continue
-            for node in dag.find_nodes_by_agent(target_agent):
+            target_nodes = []
+            if target_node_id:
+                node = dag.get_node(target_node_id)
+                if node:
+                    target_nodes = [node]
+            elif target_agent:
+                target_nodes = dag.find_nodes_by_agent(target_agent)
+            for node in target_nodes:
                 if node.state != NodeState.COMPLETED:
                     continue
                 node.state = NodeState.PENDING
-                # Inject omission context for incremental supplement
                 node.context.setdefault("omission_context", []).append(flag)
                 affected_nodes.add(node.node_id)
 

@@ -5,73 +5,66 @@ from src.dag.feedback import FeedbackHandler
 
 
 def build_test_dag():
-    """Build DAG: sd → col → feat/sent → swot → writer → qa"""
-    n_sd = DAGNode(node_id="sd", agent_type="SourceDiscovery", input_query={}, depends_on=[])
-    n_col = DAGNode(node_id="col", agent_type="Collector", input_query={}, depends_on=["sd"])
-    n_feat = DAGNode(node_id="feat", agent_type="FeatureAnalyzer", input_query={}, depends_on=["col"])
-    n_sent = DAGNode(node_id="sent", agent_type="SentimentAnalyzer", input_query={}, depends_on=["col"])
-    n_swot = DAGNode(node_id="swot", agent_type="SWOTAnalyzer", input_query={}, depends_on=["feat", "sent"])
-    n_writer = DAGNode(node_id="writer", agent_type="ReportGenerator", input_query={}, depends_on=["swot"])
-    n_qa = DAGNode(node_id="qa1", agent_type="QA_FactCheck", input_query={}, depends_on=["writer"])
-    for n in [n_sd, n_col, n_feat, n_sent, n_swot, n_writer]:
+    """Build DAG: collector → feat/sent → cross_review → writer → qa
+    用新 agent_type 构造 8 节点 DAG 的子集。"""
+    n_col = DAGNode(node_id="collector", agent_type="Collector", input_query={}, depends_on=[])
+    n_feat = DAGNode(node_id="feature_analysis", agent_type="Analyst", input_query={}, depends_on=["collector"])
+    n_sent = DAGNode(node_id="sentiment_analysis", agent_type="Analyst", input_query={}, depends_on=["collector"])
+    n_cr = DAGNode(node_id="cross_review", agent_type="Analyst", input_query={}, depends_on=["feature_analysis", "sentiment_analysis"])
+    n_writer = DAGNode(node_id="report", agent_type="ReportGenerator", input_query={}, depends_on=["cross_review"])
+    n_qa = DAGNode(node_id="qa", agent_type="QA", input_query={}, depends_on=["report"])
+    for n in [n_col, n_feat, n_sent, n_cr, n_writer]:
         n.state = NodeState.COMPLETED
     n_qa.state = NodeState.PENDING
-    return TaskDAG(task_id="fb_test", nodes=[n_sd, n_col, n_feat, n_sent, n_swot, n_writer, n_qa])
+    return TaskDAG(task_id="fb_test", nodes=[n_col, n_feat, n_sent, n_cr, n_writer, n_qa])
 
 
 class TestFeedbackQARejection:
-    def test_resets_upstream_and_downstream_of_failed_node(self):
-        """When feat fails QA, reset feat + its upstream (col, sd) + downstream (swot, writer)."""
+    def test_resets_only_report_and_qa_nodes(self):
+        """When QA fails, only reset Writer and QA nodes, not the entire upstream chain."""
         dag = build_test_dag()
         handler = FeedbackHandler()
 
         affected = handler.handle_qa_rejection(
-            dag, qa_node_id="qa1",
-            failed_nodes=["feat"],
+            dag, qa_node_id="qa",
+            failed_nodes=["feature_analysis"],
             reasons=["FeatureMatrix uses outdated data"],
             qa_round=1,
         )
 
-        # Upstream: col and sd feed into feat
-        assert "feat" in affected
-        assert "col" in affected
-        assert "sd" in affected
-        # Downstream: swot and writer consumed feat's stale output
-        assert "swot" in affected
-        assert "writer" in affected
-        # Independent branch: sentiment is parallel to feat
-        assert "sent" not in affected
+        # Only report and qa should be reset
+        assert "report" in affected
+        assert "qa" in affected
+        # Upstream analysis nodes should NOT be reset
+        assert "feature_analysis" not in affected
+        assert "collector" not in affected
+        assert "cross_review" not in affected
+        assert "sentiment_analysis" not in affected
 
         # Verify nodes actually reset
-        assert dag.get_node("feat").state == NodeState.PENDING
-        assert dag.get_node("swot").state == NodeState.PENDING
-        assert dag.get_node("sent").state == NodeState.COMPLETED
+        assert dag.get_node("report").state == NodeState.PENDING
+        assert dag.get_node("qa").state == NodeState.PENDING
+        # Other nodes should remain completed
+        assert dag.get_node("feature_analysis").state == NodeState.COMPLETED
+        assert dag.get_node("sentiment_analysis").state == NodeState.COMPLETED
 
-    def test_max_two_rounds_then_degraded(self):
+    def test_max_one_round_then_degraded(self):
         dag = build_test_dag()
         handler = FeedbackHandler()
 
         # Round 1: should work
-        affected1 = handler.handle_qa_rejection(dag, "qa1", ["feat"], ["stale data"], qa_round=1)
+        affected1 = handler.handle_qa_rejection(dag, "qa", ["feature_analysis"], ["stale data"], qa_round=1)
         assert len(affected1) > 0
-        assert dag.get_node("qa1").qa_round == 1
+        assert dag.get_node("qa").qa_round == 1
 
         # Reset back for next round
-        for nid in ["feat", "col", "sd", "swot", "writer"]:
+        for nid in ["report", "qa"]:
             dag.get_node(nid).state = NodeState.COMPLETED
 
-        # Round 2: should still work
-        affected2 = handler.handle_qa_rejection(dag, "qa1", ["feat"], ["still broken"], qa_round=2)
-        assert "feat" in affected2
-
-        # Reset back
-        for nid in ["feat", "col", "sd", "swot", "writer"]:
-            dag.get_node(nid).state = NodeState.COMPLETED
-
-        # Round 3: should NOT reset, mark QA as DEGRADED
-        affected3 = handler.handle_qa_rejection(dag, "qa1", ["feat"], ["persistent"], qa_round=3)
-        assert len(affected3) == 0
-        qa_node = dag.get_node("qa1")
+        # Round 2: should NOT reset, mark QA as DEGRADED (max 1 round)
+        affected2 = handler.handle_qa_rejection(dag, "qa", ["feature_analysis"], ["still broken"], qa_round=2)
+        assert len(affected2) == 0
+        qa_node = dag.get_node("qa")
         assert qa_node.state == NodeState.DEGRADED
         assert "qa_notes" in qa_node.context
 
@@ -82,44 +75,42 @@ class TestFeedbackCrossReviewRejection:
         handler = FeedbackHandler()
         flags = [
             {"flag_type": "conflict", "severity": "high",
-             "involved_agents": ["FeatureAnalyzer", "SentimentAnalyzer"],
-             "description": "Docs feature score contradicts user sentiment"},
+             "involved_node_ids": ["feature_analysis", "sentiment_analysis"],
+             "description": "Feature score contradicts user sentiment"},
         ]
         affected = handler.handle_cross_review_rejection(dag, flags)
-        # feat and sent both involved → their upstream (col, sd) should be reset
-        assert "feat" in affected
-        assert "sent" in affected
-        assert "col" in affected
+        # Only the involved nodes should be reset, NOT the upstream collector
+        assert "feature_analysis" in affected
+        assert "sentiment_analysis" in affected
+        assert "collector" not in affected
 
     def test_low_severity_no_reset(self):
         dag = build_test_dag()
         handler = FeedbackHandler()
         flags = [
             {"flag_type": "confidence_anomaly", "severity": "low",
-             "involved_agents": ["TechStackAnalyzer"],
+             "involved_node_ids": ["feature_analysis"],
              "description": "High confidence with few sources"},
         ]
         affected = handler.handle_cross_review_rejection(dag, flags)
         assert len(affected) == 0
 
     def test_medium_omission_triggers_incremental_supplement(self):
-        """Medium severity omission: reset only target agent, not upstream."""
+        """Medium severity omission: reset only target node, not upstream."""
         dag = build_test_dag()
         handler = FeedbackHandler()
         flags = [
             {"flag_type": "omission", "severity": "medium",
-             "source_agent": "SentimentAnalyzer",
-             "target_agent": "FeatureAnalyzer",
+             "target_node_id": "feature_analysis",
              "detail": "G2 reviews mention API integration, feature analysis missed it"},
         ]
         affected = handler.handle_cross_review_rejection(dag, flags)
-        # Target agent (feat) should be reset
-        assert "feat" in affected
-        # Upstream (col, sd) should NOT be reset for medium omission
-        assert "col" not in affected
-        assert "sd" not in affected
-        # Target agent should have omission context injected
-        feat_node = dag.get_node("feat")
+        # Target node (feature_analysis) should be reset
+        assert "feature_analysis" in affected
+        # Upstream (collector) should NOT be reset for medium omission
+        assert "collector" not in affected
+        # Target node should have omission context injected
+        feat_node = dag.get_node("feature_analysis")
         assert feat_node.state == NodeState.PENDING
         assert "omission_context" in feat_node.context
         omitted_detail = feat_node.context["omission_context"][0]
@@ -130,16 +121,15 @@ class TestFeedbackCrossReviewRejection:
         dag = build_test_dag()
         handler = FeedbackHandler()
         for n in dag.nodes:
-            if n.agent_type == "FeatureAnalyzer":
+            if n.node_id == "feature_analysis":
                 n.state = NodeState.COMPLETED
         flags = [
             {"flag_type": "omission", "severity": "medium",
-             "source_agent": "SentimentAnalyzer",
-             "target_agent": "FeatureAnalyzer",
+             "target_node_id": "feature_analysis",
              "detail": "API integration not covered"},
         ]
         handler.handle_cross_review_rejection(dag, flags)
-        feat_node = dag.get_node("feat")
+        feat_node = dag.get_node("feature_analysis")
         # cross_review_retries should NOT increment for medium severity
         assert feat_node.cross_review_retries == 0
 
@@ -148,13 +138,13 @@ class TestFeedbackCrossReviewRejection:
         handler = FeedbackHandler()
         flags = [
             {"flag_type": "conflict", "severity": "high",
-             "involved_agents": ["FeatureAnalyzer"],
+             "involved_node_ids": ["feature_analysis"],
              "description": "Conflict detected"},
         ]
 
         # Round 1: works
         affected1 = handler.handle_cross_review_rejection(dag, flags)
-        assert "feat" in affected1
+        assert "feature_analysis" in affected1
 
         # Reset back
         for nid in affected1:
@@ -162,8 +152,8 @@ class TestFeedbackCrossReviewRejection:
 
         # Round 2: should DEGRADE (max 1 round for cross-review exceeded)
         affected2 = handler.handle_cross_review_rejection(dag, flags)
-        assert "feat" in affected2
-        feat_node = dag.get_node("feat")
+        assert "feature_analysis" in affected2
+        feat_node = dag.get_node("feature_analysis")
         assert feat_node.state == NodeState.DEGRADED
         assert feat_node.cross_review_retries == 1  # unchanged, capped
 
@@ -175,7 +165,7 @@ def test_feedback_audit_failure_is_logged(caplog):
     handler = FeedbackHandler(audit_logger=audit_logger)
     flags = [
         {"flag_type": "conflict", "severity": "high",
-         "involved_agents": ["FeatureAnalyzer"],
+         "involved_node_ids": ["feature_analysis"],
          "description": "Conflict detected"},
     ]
 
@@ -183,6 +173,6 @@ def test_feedback_audit_failure_is_logged(caplog):
 
     affected = handler.handle_cross_review_rejection(dag, flags)
 
-    assert "feat" in affected
+    assert "feature_analysis" in affected
     assert "反馈审计写入失败" in caplog.text
     assert "audit unavailable" in caplog.text

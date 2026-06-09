@@ -188,12 +188,12 @@ def _layer3_assembled_report(scheduler, task_id: str) -> list[dict]:
     store = get_store()
 
     # 基础节点不需要作为报告章节展示，ReportGenerator 由 layer 2 处理
-    skip_types = {"ReportGenerator", "Orchestrator", "SourceDiscovery", "Collector", "DataEnricher"}
+    skip_types = {"ReportGenerator", "Orchestrator", "Collector"}
 
     for node in sorted(dag.nodes, key=lambda n: n.node_id):
         if node.state != NodeState.COMPLETED:
-            if node.agent_type not in skip_types.union({"QA_FactCheck", "QA_LogicCheck"}):
-                missing_dimensions.append(node.agent_type)
+            if node.agent_type not in skip_types.union({"QA"}):
+                missing_dimensions.append(node.display_name or node.agent_type)
             continue
         if node.agent_type in skip_types:
             continue

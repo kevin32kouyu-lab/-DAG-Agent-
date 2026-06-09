@@ -59,6 +59,18 @@ class AuditLogger:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_task_events(self, task_id: str, event: str | None = None) -> list[dict]:
+        if event is None:
+            rows = self._conn.execute(
+                "SELECT * FROM task_audit_log WHERE task_id = ? ORDER BY timestamp", (task_id,)
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM task_audit_log WHERE task_id = ? AND event = ? ORDER BY timestamp",
+                (task_id, event),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_step_traces(self, task_id: str, node_id: str) -> list[dict]:
         rows = self._conn.execute(
             "SELECT * FROM step_traces WHERE task_id = ? AND node_id = ? ORDER BY step_number",

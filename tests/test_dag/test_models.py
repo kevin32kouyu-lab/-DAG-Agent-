@@ -23,15 +23,15 @@ def test_dag_node_state_transitions():
 
 
 def test_task_dag_get_ready_nodes():
-    n1 = DAGNode(node_id="source_disc", agent_type="SourceDiscovery", input_query={}, depends_on=[])
-    n2 = DAGNode(node_id="collector_1", agent_type="Collector", input_query={}, depends_on=["source_disc"])
-    n3 = DAGNode(node_id="collector_2", agent_type="Collector", input_query={}, depends_on=["source_disc"])
+    n1 = DAGNode(node_id="collector", agent_type="Collector", input_query={}, depends_on=[])
+    n2 = DAGNode(node_id="feature_analysis", agent_type="Analyst", input_query={}, depends_on=["collector"])
+    n3 = DAGNode(node_id="pricing_analysis", agent_type="Analyst", input_query={}, depends_on=["collector"])
     n1.state = NodeState.COMPLETED
 
     dag = TaskDAG(task_id="task_1", nodes=[n1, n2, n3])
     ready = dag.get_ready_nodes()
     assert len(ready) == 2
-    assert {n.node_id for n in ready} == {"collector_1", "collector_2"}
+    assert {n.node_id for n in ready} == {"feature_analysis", "pricing_analysis"}
 
 
 def test_task_dag_is_terminal():
@@ -62,7 +62,7 @@ def test_dag_find_upstream():
 def test_dag_node_platform_metadata_defaults():
     node = DAGNode(
         node_id="feature_analysis",
-        agent_type="FeatureAnalyzer",
+        agent_type="Analyst",
         input_query={"targets": ["Notion", "ClickUp"]},
     )
 
@@ -85,7 +85,7 @@ def test_task_dag_platform_metadata_and_stage_lookup():
     )
     n2 = DAGNode(
         node_id="feature_analysis",
-        agent_type="FeatureAnalyzer",
+        agent_type="Analyst",
         input_query={},
         depends_on=["collector"],
         stage="analysis",
@@ -108,7 +108,7 @@ def test_task_dag_platform_metadata_and_stage_lookup():
 
 
 def test_new_feedback_states_are_non_terminal_until_resolved():
-    n1 = DAGNode(node_id="n1", agent_type="QA_FactCheck", input_query={})
+    n1 = DAGNode(node_id="n1", agent_type="QA", input_query={})
     n2 = DAGNode(node_id="n2", agent_type="ReportGenerator", input_query={})
     dag = TaskDAG(task_id="task_feedback", nodes=[n1, n2])
 

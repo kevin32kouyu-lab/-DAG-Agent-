@@ -2,6 +2,7 @@
 
 import httpx
 import logging
+import os
 from typing import Any
 from bs4 import BeautifulSoup
 from src.agents.tools.base import ToolBase
@@ -149,42 +150,257 @@ class WebScrapeTool(ToolBase):
 
 class WebSearchTool(ToolBase):
     name = "web_search"
-    description = "Search the web for information about a product or topic. Returns title, url, and snippet for each result."
+    description = (
+        "Search the web for information about a product or topic. "
+        "Returns title, url, and snippet for each result. "
+        "Aggregates from Firecrawl (best quality, needs API key), DuckDuckGo (reliable), "
+        "Sogou and Baidu (best-effort). All free."
+    )
     param_schema = {
         "query": {"type": "string", "description": "Search query"},
+        "max_results": {"type": "integer", "description": "Max results (default 10, max 20)"},
+        "backends": {
+            "type": "array",
+            "description": "Search backends: 'firecrawl', 'ddgs', 'sogou', 'baidu'. Default: all available.",
+        },
     }
 
+    _UA_LIST = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    ]
+
+    def _get_ua(self, index: int = 0) -> str:
+        return self._UA_LIST[index % len(self._UA_LIST)]
+
     async def execute(self, **kwargs) -> dict[str, Any]:
+        import asyncio
+
         query = kwargs.get("query", "")
+        max_results = min(int(kwargs.get("max_results", 10)), 20)
+        # Default: try firecrawl first (if key configured), then ddgs, then sogou/baidu
+        default_backends = ["ddgs", "sogou", "baidu"]
+        if os.environ.get("FIRECRAWL_API_KEY"):
+            default_backends.insert(0, "firecrawl")
+        backends = kwargs.get("backends", default_backends)
+
+        if not query:
+            return {"query": query, "error": "query is required", "results": []}
+
+        # Run backends with stagger to avoid concurrent-request detection
+        async def _run_with_delay(delay, coro):
+            await asyncio.sleep(delay)
+            return await coro
+
+        # Use hash of query to pick different UAs for each backend
+        ua_offset = hash(query) % len(self._UA_LIST)
+        # Each backend fetches more than needed so merged results have diversity
+        per_backend = max(max_results, 8)
+        tasks = []
+        if "firecrawl" in backends:
+            tasks.append(_run_with_delay(0, self._search_firecrawl(query, per_backend)))
+        if "ddgs" in backends:
+            tasks.append(_run_with_delay(0, self._search_ddgs(query, per_backend)))
+        if "sogou" in backends:
+            tasks.append(_run_with_delay(0.5, self._search_sogou(query, per_backend, ua_offset)))
+        if "baidu" in backends:
+            tasks.append(_run_with_delay(1.0, self._search_baidu(query, per_backend, ua_offset + 1)))
+
+        all_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Merge and deduplicate, interleaving results from each backend
+        seen_urls = set()
+        merged = []
+        batches = []
+        for batch in all_results:
+            if isinstance(batch, Exception):
+                logger.warning("Search backend error: %s", batch)
+                continue
+            batches.append(batch)
+
+        # Round-robin merge: take one from each backend in turn
+        max_len = max((len(b) for b in batches), default=0)
+        for i in range(max_len):
+            for batch in batches:
+                if i < len(batch):
+                    r = batch[i]
+                    url = r.get("url", "")
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        merged.append(r)
+                    elif not url:
+                        # Some results may have empty URLs (e.g. from Baidu)
+                        merged.append(r)
+
+        if not merged:
+            return {
+                "query": query,
+                "error": "All search backends returned no results.",
+                "results": [],
+            }
+
+        return {"query": query, "results": merged[:max_results]}
+
+    async def _search_firecrawl(self, query: str, max_results: int) -> list[dict]:
+        """Firecrawl search API — best quality, especially for Chinese content."""
+        api_key = os.environ.get("FIRECRAWL_API_KEY", "")
+        if not api_key:
+            return []
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            import asyncio
+            loop = asyncio.get_event_loop()
+
+            def _do():
+                from firecrawl import Firecrawl
+                client = Firecrawl(api_key=api_key)
+                result = client.search(query, limit=max_results)
+                web = result.web or []
+                return [
+                    {
+                        "title": getattr(r, "title", "") or "",
+                        "url": getattr(r, "url", "") or "",
+                        "snippet": getattr(r, "description", "") or "",
+                        "source": "firecrawl",
+                    }
+                    for r in web
+                ]
+
+            return await loop.run_in_executor(None, _do)
+        except Exception as e:
+            logger.warning("Firecrawl search failed: %s", e)
+            return []
+
+    async def _search_ddgs(self, query: str, max_results: int) -> list[dict]:
+        """DuckDuckGo via ddgs library."""
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None, lambda: _ddgs_search(query, max_results)
+            )
+        except Exception as e:
+            logger.warning("ddgs search failed: %s", e)
+            return []
+
+    async def _search_sogou(self, query: str, max_results: int, ua_offset: int = 0) -> list[dict]:
+        """Sogou web search via HTML scraping."""
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
                 resp = await client.get(
-                    "https://html.duckduckgo.com/html/",
-                    params={"q": query},
-                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+                    "https://www.sogou.com/web",
+                    params={"query": query},
+                    headers={"User-Agent": self._get_ua(ua_offset)},
                 )
             if resp.status_code != 200:
-                return {"query": query, "error": f"HTTP {resp.status_code}", "results": []}
+                return []
+
             soup = BeautifulSoup(resp.text, "html.parser")
             results = []
-            for r in soup.select(".result"):
-                link = r.select_one(".result__a")
-                snippet = r.select_one(".result__snippet")
-                if link:
-                    results.append({
-                        "title": link.get_text(strip=True),
-                        "url": link.get("href", ""),
-                        "snippet": snippet.get_text(strip=True) if snippet else "",
-                    })
-            if not results:
-                return {
-                    "query": query,
-                    "error": "Search returned no results. DuckDuckGo may be blocked or the HTML structure changed.",
-                    "results": [],
-                }
-            return {"query": query, "results": results[:15]}
+            for item in soup.select(".vrwrap"):
+                link = item.select_one("h3 a")
+                if not link:
+                    continue
+                # Extract snippet from various possible containers
+                snippet_el = (
+                    item.select_one(".str_info")
+                    or item.select_one(".str-text-info")
+                    or item.select_one("p")
+                    or item.select_one(".space-txt")
+                )
+                snippet = snippet_el.get_text(strip=True) if snippet_el else ""
+                href = link.get("href", "")
+                # Sogou may use relative or redirect URLs
+                results.append({
+                    "title": link.get_text(strip=True),
+                    "url": href,
+                    "snippet": snippet[:300],
+                    "source": "sogou",
+                })
+            return results[:max_results]
         except Exception as e:
-            return {"query": query, "error": f"Search failed: {e}", "results": []}
+            logger.warning("Sogou search failed: %s", e)
+            return []
+
+    async def _search_baidu(self, query: str, max_results: int, ua_offset: int = 1) -> list[dict]:
+        """Baidu web search via mobile HTML scraping (avoids desktop CAPTCHA)."""
+        try:
+            mobile_ua = ("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) "
+                        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 "
+                        "Mobile/15E148 Safari/604.1")
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+                resp = await client.get(
+                    "https://m.baidu.com/s",
+                    params={"wd": query},
+                    headers={
+                        "User-Agent": mobile_ua,
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Accept-Language": "zh-CN,zh;q=0.9",
+                    },
+                )
+            if resp.status_code != 200:
+                return []
+
+            soup = BeautifulSoup(resp.text, "html.parser")
+            results = []
+
+            for container in soup.select(".c-result"):
+                # Title: first significant link text
+                title = ""
+                url = ""
+                for a_tag in container.select("a"):
+                    text = a_tag.get_text(strip=True)
+                    if len(text) > 4 and text not in ("大家还在搜",):
+                        title = text[:100]
+                        url = a_tag.get("href", "")
+                        break
+
+                if not title:
+                    continue
+
+                # Snippet: summary text elements
+                snippet = ""
+                for sel in [".summary-text_560AW", ".cu-line-clamp-3", ".c-color",
+                            "span[class*='summary']", "div[class*='summary']"]:
+                    el = container.select_one(sel)
+                    if el:
+                        text = el.get_text(strip=True)
+                        if len(text) > 10:
+                            snippet = text[:300]
+                            break
+
+                results.append({
+                    "title": title,
+                    "url": url,
+                    "snippet": snippet,
+                    "source": "baidu",
+                })
+            return results[:max_results]
+        except Exception as e:
+            logger.warning("Baidu search failed: %s", e)
+            return []
+
+
+def _ddgs_search(query: str, max_results: int) -> list[dict]:
+    """Synchronous DuckDuckGo search via ddgs library."""
+    try:
+        from ddgs import DDGS
+    except ImportError:
+        try:
+            from duckduckgo_search import DDGS
+        except ImportError:
+            return []
+
+    results = []
+    for r in DDGS().text(query, max_results=max_results):
+        results.append({
+            "title": r.get("title", ""),
+            "url": r.get("href", ""),
+            "snippet": r.get("body", ""),
+            "source": "ddgs",
+        })
+    return results
 
 
 class BatchWebScrapeTool(ToolBase):

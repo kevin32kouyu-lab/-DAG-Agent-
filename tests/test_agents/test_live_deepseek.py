@@ -36,9 +36,8 @@ from src.agents.tools.producthunt_tool import ProductHuntTool
 from src.agents.tools.wayback_tool import WaybackTool
 from src.agents.tools.google_trends_tool import GoogleTrendsTool
 from src.agents.tools.social_media_tool import SocialMediaTool
-from src.agents.source_discovery import SourceDiscoveryAgent
 from src.agents.collector import CollectorAgent
-from src.agents.data_enricher import DataEnricherAgent
+from src.agents.analyst import AnalystAgent
 
 
 @pytest.fixture

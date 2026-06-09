@@ -4,19 +4,10 @@ export type NodeState = 'pending' | 'ready' | 'running' | 'completed' | 'failed'
 
 export type AgentType =
   | 'Orchestrator'
-  | 'SourceDiscovery'
   | 'Collector'
-  | 'DataEnricher'
-  | 'FeatureAnalyzer'
-  | 'SentimentAnalyzer'
-  | 'PricingAnalyst'
-  | 'TechStackAnalyzer'
-  | 'MarketPositionAnalyzer'
-  | 'CrossReviewAgent'
-  | 'SWOTAnalyzer'
+  | 'Analyst'
   | 'ReportGenerator'
-  | 'QA_FactCheck'
-  | 'QA_LogicCheck';
+  | 'QA';
 
 /* DAG types */
 

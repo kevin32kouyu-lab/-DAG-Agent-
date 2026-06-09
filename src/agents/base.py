@@ -290,7 +290,18 @@ Respond with json now."""
             return {"error": f"Tool '{action}' not available. Your allowed tools: {self.allowed_tools}"}
         tool = self.tool_registry.get(action)
         if tool:
-            return await tool.execute(**params, _agent_type=self.agent_type, _task_id=self.context.task_id)
+            # 注入内部上下文参数（以 _ 开头，会被 ToolCache 自动过滤掉）
+            call_kwargs = {**params, "_agent_type": self.agent_type, "_task_id": self.context.task_id}
+            # 走统一缓存层（cacheable=False 的工具会自动透传到原 execute）
+            if getattr(tool, "cacheable", True):
+                from src.agents.tools.cache import tool_cache
+                return await tool_cache.get_or_call(
+                    tool_name=tool.name,
+                    params=params,  # 用业务参数生成 key（不含 _ 开头的）
+                    call_fn=tool.execute,
+                    call_kwargs=call_kwargs,
+                )
+            return await tool.execute(**call_kwargs)
         registered = self.tool_registry.list_tools() if self.tool_registry else []
         return {"error": f"Tool '{action}' not found. Available tools: {registered}"}
 

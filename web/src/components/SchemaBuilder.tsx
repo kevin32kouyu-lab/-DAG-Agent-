@@ -14,11 +14,11 @@ interface PresetDim {
 }
 
 const PRESET_DIMENSIONS: PresetDim[] = [
-  { name: '功能矩阵对比', description: '功能拆解与矩阵对比', agent_type: 'FeatureAnalyzer', node_types: ['FeatureNode', 'FeatureMatrix'], available: true },
-  { name: '定价策略分析', description: '定价模型拆解、性价比评分', agent_type: 'PricingAnalyst', node_types: ['PricingData', 'PricingModel'], available: true },
-  { name: '用户口碑分析', description: '用户评价情感分析、口碑趋势', agent_type: 'SentimentAnalyzer', node_types: ['SentimentNode', 'ReviewEntry'], available: true },
-  { name: '技术栈推断', description: '推断产品技术栈、架构特征', agent_type: 'TechStackAnalyzer', node_types: ['TechStack'], available: true },
-  { name: '市场定位分析', description: '市场定位、GTM 策略分析', agent_type: 'MarketPositionAnalyzer', node_types: ['MarketPositionNode'], available: true },
+  { name: '功能矩阵对比', description: '功能拆解与矩阵对比', agent_type: 'Analyst', node_types: ['FeatureNode', 'FeatureMatrix'], available: true },
+  { name: '定价策略分析', description: '定价模型拆解、性价比评分', agent_type: 'Analyst', node_types: ['PricingData', 'PricingModel'], available: true },
+  { name: '用户口碑分析', description: '用户评价情感分析、口碑趋势', agent_type: 'Analyst', node_types: ['SentimentNode', 'ReviewEntry'], available: true },
+  { name: '技术栈推断', description: '推断产品技术栈、架构特征', agent_type: 'Analyst', node_types: ['TechStack'], available: true },
+  { name: '市场定位分析', description: '市场定位、GTM 策略分析', agent_type: 'Analyst', node_types: ['MarketPositionNode'], available: true },
 ];
 
 const AUDIENCE_OPTIONS = [

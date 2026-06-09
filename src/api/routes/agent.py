@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from src.api.deps import get_scheduler
+from src.api.routes.task import _node_view
 
 router = APIRouter()
 
@@ -10,12 +11,4 @@ async def get_agent_status(task_id: str):
     dag = scheduler.get_task_dag(task_id)
     if dag is None:
         return {"task_id": task_id, "agents": []}
-    agents = []
-    for node in dag.nodes:
-        agents.append({
-            "node_id": node.node_id,
-            "agent_type": node.agent_type,
-            "state": node.state.value if hasattr(node.state, 'value') else str(node.state),
-            "depends_on": node.depends_on,
-        })
-    return {"task_id": task_id, "agents": agents}
+    return {"task_id": task_id, "agents": [_node_view(node) for node in dag.nodes]}

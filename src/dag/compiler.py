@@ -14,6 +14,11 @@ SCENARIO_TO_TEMPLATE_ID = {
     WorkflowScenario.APP.value: "app_competitor_analysis",
 }
 
+# collection_depth="demo" 时路由到 demo 专用模板（跳过 cross_review/QA）
+DEPTH_TO_TEMPLATE_ID = {
+    "demo": "demo_competitor_analysis",
+}
+
 
 @dataclass(frozen=True)
 class WorkflowCompileRequest:
@@ -38,10 +43,13 @@ class WorkflowCompiler:
             raise ValueError("targets must contain at least one product")
 
         scenario = request.scenario.lower().strip()
-        template_id = SCENARIO_TO_TEMPLATE_ID.get(scenario)
+        # collection_depth="demo" 时优先选 demo 模板，跳过 cross_review/QA
+        depth = (request.collection_depth or "").lower().strip()
+        template_id = DEPTH_TO_TEMPLATE_ID.get(depth) or SCENARIO_TO_TEMPLATE_ID.get(scenario)
         if not template_id:
             raise ValueError(f"unsupported scenario: {request.scenario}")
 
+        schema = self._normalize_schema(request.schema)
         template = self.registry.get(template_id)
         nodes: list[DAGNode] = []
 
@@ -52,9 +60,12 @@ class WorkflowCompiler:
                 "stage": spec.stage,
                 "role_group": spec.role_group,
                 "collection_depth": request.collection_depth,
-                "schema": request.schema,
+                "schema": schema,
                 **spec.input_defaults,
             }
+            if spec.node_id == "report":
+                input_query["report_sections"] = schema.get("report_sections", [])
+                input_query["benchmark_product"] = schema.get("benchmark_product")
             nodes.append(DAGNode(
                 node_id=spec.node_id,
                 agent_type=spec.agent_type,
@@ -69,6 +80,7 @@ class WorkflowCompiler:
                 output_contract=spec.output_contract,
                 degradation_policy=dict(spec.degradation_policy),
                 source_policy=dict(spec.source_policy),
+                input_defaults=dict(spec.input_defaults),
                 context={
                     "workflow_template_id": template.template_id,
                     "workflow_template_name": template.name,
@@ -87,5 +99,18 @@ class WorkflowCompiler:
                 "workflow_template_name": template.name,
                 "collection_depth": request.collection_depth,
                 "template_description": template.description,
+                "schema": schema,
             },
         )
+
+    @staticmethod
+    def _normalize_schema(schema: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "industry": schema.get("industry", "saas"),
+            "exclude_dimensions": list(schema.get("exclude_dimensions", [])),
+            "dimension_weights": dict(schema.get("dimension_weights", {})),
+            "source_preferences": dict(schema.get("source_preferences", {})),
+            "benchmark_product": schema.get("benchmark_product"),
+            "report_sections": list(schema.get("report_sections", [])),
+            "report_audience": schema.get("report_audience", "product_manager"),
+        }

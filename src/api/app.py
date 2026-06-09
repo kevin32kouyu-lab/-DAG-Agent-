@@ -20,15 +20,7 @@ health_check = HealthCheck()
 
 @app.get("/api/health")
 async def health():
-    unhealthy = health_check.get_unhealthy_agents()
-    timed_out = health_check.get_timed_out_tasks()
-    return {
-        "status": "degraded" if (unhealthy or timed_out) else "ok",
-        "unhealthy_agents": unhealthy,
-        "timed_out_tasks": timed_out,
-        "agent_count": len(health_check.agent_heartbeats),
-        "running_tasks": len(health_check.task_timeouts),
-    }
+    return health_check.status()
 
 
 if __name__ == "__main__":

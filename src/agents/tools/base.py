@@ -6,6 +6,8 @@ class ToolBase(ABC):
     name: str = ""
     description: str = ""
     param_schema: dict[str, Any] = {}
+    # 是否参与缓存（默认 True；本地工具如 graph_query/write 可设 False）
+    cacheable: bool = True
 
     async def execute(self, **kwargs) -> dict[str, Any]:
         return {"error": "not implemented"}
@@ -60,3 +62,7 @@ class ToolRegistry:
 
 
 tool_registry = ToolRegistry()
+
+
+# 预先标记不可缓存的工具
+# GraphQueryTool 和 GraphWriteTool 会在各自模块里设 cacheable=False

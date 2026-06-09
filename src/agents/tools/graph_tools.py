@@ -29,6 +29,7 @@ NODE_TYPE_MAP: dict[str, type] = {
 class GraphQueryTool(ToolBase):
     name = "graph_query"
     description = "Query nodes from the knowledge graph by type, layer, or ID."
+    cacheable = False
     param_schema = {
         "node_type": {"type": "string", "description": "Node type to filter by"},
         "layer": {"type": "integer", "description": "Layer to filter by (1=raw, 2=analysis, 3=synthesis)"},
@@ -72,6 +73,7 @@ class GraphQueryTool(ToolBase):
 class GraphWriteTool(ToolBase):
     name = "graph_write"
     description = "Create nodes and edges in the knowledge graph."
+    cacheable = False
     param_schema = {
         "node_type": {"type": "string", "description": "Type of node to create"},
         "data": {"type": "object", "description": "Node data matching the node type schema"},

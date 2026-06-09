@@ -1,27 +1,34 @@
-"""报告生成 Agent，负责把图谱分析结果整理成最终报告。"""
+"""报告撰写 Agent：合并 SWOT 综合 + 报告生成，两阶段执行。"""
 
+import json
 import logging
 from typing import Any
+
 from src.agents.base import BaseAgent
 from src.agents.contracts import ReportOutput
 from src.agents.registry import agent_registry
 
 logger = logging.getLogger(__name__)
 
-WRITER_PROMPT = """You are a Report Generator. Your ONLY job: read available data, then produce a complete competitive analysis report in markdown about the TARGET product(s) specified in the task input.
+_WRITER_SYSTEM_PROMPT = """You are a Report Generator for competitive analysis. You perform TWO phases of work:
 
-WORKFLOW (exactly 2 steps, no more):
-Step 1: graph_query to read all nodes from the knowledge graph
-Step 2: finalize with a COMPLETE markdown report about the target product(s)
+═══ PHASE 1: SWOT SYNTHESIS ═══
+Read all Layer 2 analysis results from the knowledge graph and synthesize a SWOT matrix per product:
+1. graph_query to read FeatureMatrix, SentimentNode, PricingModel, TechStack, MarketPosition nodes
+2. If graph data is THIN (fewer than 3 nodes per product): use web_search to fill gaps:
+   - "ProductName strengths weaknesses review 2025"
+   - "ProductName vs competitors comparison"
+3. For each product, write a SWOTNode with:
+   - strengths: list 3-5 (from FeatureMatrix positives, high sentiments)
+   - weaknesses: list 3-5 (from FeatureMatrix gaps, negative sentiments)
+   - opportunities: list 3-5 (from MarketPosition insights, search results)
+   - threats: list 3-5 (from competitive comparisons, market trends)
+4. graph_write to persist one SWOTNode per product
 
-CRITICAL RULES:
-- The target product name is in the task's input_query.targets — you MUST write about THAT product
-- You MUST finalize in step 2 — do NOT loop, do NOT call graph_query twice
-- Include result.report_markdown with the FULL report (all sections, minimum 500 words)
-- Include result.summary with a one-line description
-- If the graph has NO data, write the report from your training knowledge about the TARGET product
-- ALWAYS mention the target product name in every section
-- Mark sections with low confidence if data was unavailable
+═══ PHASE 2: REPORT GENERATION ═══
+Generate the final competitive analysis report:
+1. graph_query to read ALL nodes from the knowledge graph (including SWOTNode from Phase 1)
+2. Generate a COMPLETE markdown report about the TARGET product(s) specified in the task input
 
 Report structure:
 ## Executive Summary
@@ -33,25 +40,38 @@ Report structure:
 ## SWOT Analysis
 ## Strategic Recommendations
 
-Skip sections that have no data AND no general knowledge available.
+CRITICAL RULES:
+- The target product name is in the task's input_query.targets — you MUST write about THAT product
+- Include result.report_markdown with the FULL report (all sections, minimum 500 words)
+- If the graph has NO data, write the report from your training knowledge about the TARGET product
+- ALWAYS mention the target product name in every section
+- Mark sections with low confidence if data was unavailable
+- Even if only partial data is available, generate a report covering what you have
+- Finalize within 10 steps total
 """
 
 
 @agent_registry.register(
     agent_type="ReportGenerator",
-    depends_on=["SWOTAnalyzer"],
-    tools=["graph_query", "graph_write"],
+    depends_on=["Collector", "Analyst"],
+    tools=["graph_query", "graph_write", "web_search"],
     output_contract=ReportOutput,
     model_tier="analysis",
 )
 class WriterAgent(BaseAgent):
+    """报告撰写 Agent：SWOT 综合 + 报告生成。
+
+    合并了原 SWOTAnalyzer 和 Writer 的功能。
+    4 级 fallback 保证总有输出。
+    """
+
     agent_type = "ReportGenerator"
-    system_prompt = WRITER_PROMPT
-    max_steps = 5
+    system_prompt = _WRITER_SYSTEM_PROMPT
+    max_steps = 10
     token_budget = 400_000
     output_contract = ReportOutput
     model_tier = "analysis"
-    allowed_tools = ["graph_query", "graph_write"]
+    allowed_tools = ["graph_query", "graph_write", "web_search"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -65,9 +85,6 @@ class WriterAgent(BaseAgent):
             logger.warning(
                 "Writer agent failed, generating fallback report", exc_info=True
             )
-            # context.init is already called by super().execute() first line;
-            # self._targets is already set by _observe before the failure.
-            # Build a fallback output so _output_data is always available.
             output = self._build_output({})
             return output, []
 
@@ -85,11 +102,8 @@ class WriterAgent(BaseAgent):
             }
         return await super()._think(observation)
 
-    def _build_output(self, result: dict[str, Any]) -> Any:
-        """从 LLM 结果构建报告输出。LLM 生成的 report_markdown 优先；
-        图谱中的 ReportSection 节点仅在 LLM 未生成有用内容时作为备选拼接。"""
-        import json
-
+    def _build_output(self, result: dict[str, Any]) -> ReportOutput:
+        """从 LLM 结果构建报告输出。4 级 fallback。"""
         task_id = self.context.task_id
         sections: list[dict] = []
         report_markdown = ""
@@ -115,8 +129,7 @@ class WriterAgent(BaseAgent):
             except Exception as e:
                 logger.warning(
                     "Writer 图谱报告章节读取失败，已使用兜底报告: task_id=%s, reason=%s",
-                    task_id,
-                    e,
+                    task_id, e,
                 )
                 section_nodes = []
             graph_sections: list[dict] = []
@@ -133,13 +146,12 @@ class WriterAgent(BaseAgent):
                 sec = getattr(node, "section", "")
                 content = getattr(node, "content", "")
                 if sec in seen:
-                    continue  # 去重
+                    continue
                 seen.add(sec)
                 order = getattr(node, "order", 0)
                 graph_sections.append({"section": sec, "content": content, "order": order})
             if graph_sections:
                 sections = graph_sections
-                # 用图谱节点拼接 markdown（仅备选路径使用）
                 report_markdown = "\n\n".join(
                     f"## {s['section']}\n\n{s['content']}" for s in graph_sections
                 )
@@ -151,8 +163,8 @@ class WriterAgent(BaseAgent):
 
         summary = result.get("summary", "Report generated") if result else "Report generated"
 
-        # 仅在使用了 LLM 输出时持久化到图谱（避免把图谱旧数据重复写入）
-        if result and result.get("report_markdown", ""):
+        # 始终持久化报告到图谱（包括 fallback 报告）
+        if sections:
             self._persist_sections(sections, task_id)
 
         return ReportOutput(
@@ -166,12 +178,9 @@ class WriterAgent(BaseAgent):
         )
 
     def _persist_sections(self, sections: list[dict], task_id: str) -> None:
-        import logging
-        import json
-        logger = logging.getLogger(__name__)
         from src.knowledge_graph.models import ReportSectionNode
 
-        # 先删除该 task 下所有旧的 ReportSection，避免多次运行后指数级重复
+        # 先删除该 task 下所有旧的 ReportSection
         all_sections = self.store.query_nodes(node_type="ReportSection", layer=3)
         for node in all_sections:
             try:
@@ -196,35 +205,62 @@ class WriterAgent(BaseAgent):
                 logger.warning(f"Writer: failed to persist ReportSection '{s.get('section', '')}': {e}")
 
     def _fix_product_names(self, text: str) -> str:
-        """Ensure the report mentions the actual target product."""
         if not self._targets:
             return text
         target = self._targets[0]
         if target.lower() in text.lower():
             return text
-        # If LLM wrote about a different product, inject the correct title
         return f"# {target} 竞品分析报告\n\n{text}"
 
     def _generate_fallback_report(self) -> str:
         product_list = ', '.join(self._targets) if self._targets else "目标产品"
-        return (
-            f"# {product_list} 竞品分析报告\n\n"
-            f"## 概述\n\n"
-            f"本报告对 {product_list} 进行了竞品分析。"
-            f"由于数据收集阶段的数据量不足，本次分析基于公开信息和行业通用知识。\n\n"
-            f"## 功能分析\n\n"
-            f"{product_list} 作为一款知名的产品，在市场上具有较高的知名度。"
-            f"具体的功能特性需要进一步的数据收集来完善。\n\n"
-            f"## 定价策略\n\n"
-            f"定价信息暂未收集到。建议通过官方渠道或第三方平台获取最新定价。\n\n"
-            f"## 市场定位\n\n"
-            f"{product_list} 在所属领域占据一定市场份额。"
-            f"详细的竞争格局分析需要更多数据支持。\n\n"
-            f"## 说明\n\n"
-            f"当前知识图谱中未包含足够的分析数据，"
-            f"建议重新运行分析任务或扩大数据收集范围。"
-            f"可能的原因：Collector 未能成功获取网页数据，"
-            f"或 DataEnricher 未能补充足够的上下文信息。\n\n"
-            f"> 生成状态: 部分数据可用，报告内容有限。"
-            f"请检查上游 Agent 的执行日志。"
-        )
+
+        # 尝试从 DAG 节点上下文中读取分析结果
+        analysis_summaries = self._read_analysis_from_dag_context()
+
+        report = f"# {product_list} 竞品分析报告\n\n"
+        report += f"## 概述\n\n"
+        report += f"本报告对 {product_list} 进行了竞品分析。"
+
+        if analysis_summaries:
+            report += f"以下内容基于已完成的分析节点结果。\n\n"
+            for dim, summary in analysis_summaries.items():
+                report += f"## {dim}\n\n{summary}\n\n"
+        else:
+            report += f"由于数据收集阶段的数据量不足，本次分析基于公开信息和行业通用知识。\n\n"
+            report += f"## 功能分析\n\n"
+            report += f"{product_list} 作为一款知名的产品，在市场上具有较高的知名度。"
+            report += f"具体的功能特性需要进一步的数据收集来完善。\n\n"
+            report += f"## 定价策略\n\n"
+            report += f"定价信息暂未收集到。建议通过官方渠道或第三方平台获取最新定价。\n\n"
+            report += f"## 市场定位\n\n"
+            report += f"{product_list} 在所属领域占据一定市场份额。"
+            report += f"详细的竞争格局分析需要更多数据支持。\n\n"
+            report += f"## 说明\n\n"
+            report += f"当前知识图谱中未包含足够的分析数据，"
+            report += f"建议重新运行分析任务或扩大数据收集范围。"
+
+        return report
+
+    def _read_analysis_from_dag_context(self) -> dict[str, str]:
+        """从 DAG 节点上下文中读取分析结果摘要。"""
+        summaries = {}
+        try:
+            # 通过 store 查询所有分析节点的输出
+            for node_type in ["FeatureMatrix", "SentimentNode", "PricingModel", "TechStack", "MarketPosition"]:
+                nodes = self.store.query_nodes(node_type=node_type)
+                for node in nodes:
+                    summary = getattr(node, "summary", "") or ""
+                    if summary and len(summary) > 20:
+                        dim_name = {
+                            "FeatureMatrix": "功能分析",
+                            "SentimentNode": "用户口碑",
+                            "PricingModel": "定价策略",
+                            "TechStack": "技术栈",
+                            "MarketPosition": "市场定位",
+                        }.get(node_type, node_type)
+                        if dim_name not in summaries:
+                            summaries[dim_name] = summary
+        except Exception as e:
+            logger.warning("从图谱读取分析摘要失败: %s", e)
+        return summaries

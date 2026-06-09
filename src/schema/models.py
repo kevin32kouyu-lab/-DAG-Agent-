@@ -33,8 +33,8 @@ class AnalysisSchema(BaseModel):
     exclude_dimensions: list[str] = Field(default_factory=list)
     custom_fields: dict[str, list[FieldDef]] = Field(default_factory=dict)
     dimension_weights: dict[str, float] = Field(default_factory=dict)
-    source_preferences: SourcePrefs = SourcePrefs()
+    source_preferences: SourcePrefs = Field(default_factory=SourcePrefs)
     benchmark_product: str | None = None
     report_audience: str = "product_manager"
     report_sections: list[str] = Field(default_factory=list)
-    output_formats: list[str] = ["markdown"]
+    output_formats: list[str] = Field(default_factory=lambda: ["markdown"])

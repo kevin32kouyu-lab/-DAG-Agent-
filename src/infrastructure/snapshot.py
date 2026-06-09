@@ -45,3 +45,7 @@ class SnapshotStore:
             )
             for r in rows
         }
+
+    def clear(self, task_id: str) -> None:
+        self._conn.execute("DELETE FROM snapshots WHERE task_id = ?", (task_id,))
+        self._conn.commit()

@@ -4,20 +4,11 @@ import type { AgentState, NodeState } from '../types';
 /* ---- agent type display name ---- */
 
 const AGENT_NAMES: Record<string, string> = {
-  Orchestrator: 'Orchestrator',
-  SourceDiscovery: 'Source Discovery',
-  Collector: 'Collector',
-  DataEnricher: 'Data Enricher',
-  FeatureAnalyzer: 'Feature Analyzer',
-  SentimentAnalyzer: 'Sentiment Analyzer',
-  PricingAnalyst: 'Pricing Analyst',
-  TechStackAnalyzer: 'TechStack Analyzer',
-  MarketPositionAnalyzer: 'Market Position',
-  CrossReviewAgent: 'Cross-Review',
-  SWOTAnalyzer: 'SWOT Synthesizer',
-  ReportGenerator: 'Report Generator',
-  QA_FactCheck: 'QA #1 Fact Check',
-  QA_LogicCheck: 'QA #2 Logic Check',
+  Orchestrator: '编排器',
+  Collector: '信息采集',
+  Analyst: '分析师',
+  ReportGenerator: '报告撰写',
+  QA: '质检',
 };
 
 /* ---- progress bar helper ---- */

@@ -7,23 +7,25 @@ from src.agents.tools.base import ToolRegistry
 from src.agents.base import BaseAgent
 
 # Lazy import map: agent_type → (module_path, class_name)
-# Agents are imported on first use so executor.py works as soon as it's created (P2),
-# even though most agent files don't exist until P3-P5.
+# 重构后只有 4 个 Agent 类 + Orchestrator
 _AGENT_IMPORT_MAP: dict[str, tuple[str, str]] = {
-    "Orchestrator":       ("src.agents.orchestrator",       "OrchestratorAgent"),
-    "SourceDiscovery":    ("src.agents.source_discovery",   "SourceDiscoveryAgent"),
-    "Collector":          ("src.agents.collector",          "CollectorAgent"),
-    "DataEnricher":       ("src.agents.data_enricher",      "DataEnricherAgent"),
-    "FeatureAnalyzer":    ("src.agents.feature_analyzer",   "FeatureAnalyzer"),
-    "SentimentAnalyzer":  ("src.agents.sentiment_analyzer", "SentimentAnalyzer"),
-    "PricingAnalyst":     ("src.agents.pricing_analyst",    "PricingAnalyst"),
-    "TechStackAnalyzer":  ("src.agents.techstack_analyzer", "TechStackAnalyzer"),
-    "MarketPositionAnalyzer": ("src.agents.market_position", "MarketPositionAnalyzer"),
-    "CrossReviewAgent":   ("src.agents.cross_review",       "CrossReviewAgent"),
-    "SWOTAnalyzer":       ("src.agents.swot_synthesizer",   "SWOTAnalyzer"),
-    "ReportGenerator":    ("src.agents.writer",             "WriterAgent"),
-    "QA_FactCheck":       ("src.agents.qa_fact_check",      "QAFactCheckAgent"),
-    "QA_LogicCheck":      ("src.agents.qa_logic_check",     "QALogicCheckAgent"),
+    "Orchestrator":       ("src.agents.orchestrator",  "OrchestratorAgent"),
+    "Collector":          ("src.agents.collector",     "CollectorAgent"),
+    "Analyst":            ("src.agents.analyst",       "AnalystAgent"),
+    "ReportGenerator":    ("src.agents.writer",        "WriterAgent"),
+    "QA":                 ("src.agents.qa",            "QAAgent"),
+    # 旧版 agent_type 兼容映射（用于 replay fixtures 和历史 DAG）
+    "SourceDiscovery":    ("src.agents.collector",     "CollectorAgent"),
+    "DataEnricher":       ("src.agents.collector",     "CollectorAgent"),
+    "FeatureAnalyzer":    ("src.agents.analyst",       "AnalystAgent"),
+    "SentimentAnalyzer":  ("src.agents.analyst",       "AnalystAgent"),
+    "PricingAnalyst":     ("src.agents.analyst",       "AnalystAgent"),
+    "TechStackAnalyzer":  ("src.agents.analyst",       "AnalystAgent"),
+    "MarketPositionAnalyzer": ("src.agents.analyst",   "AnalystAgent"),
+    "CrossReviewAgent":   ("src.agents.analyst",       "AnalystAgent"),
+    "SWOTAnalyzer":       ("src.agents.writer",        "WriterAgent"),
+    "QA_FactCheck":       ("src.agents.qa",            "QAAgent"),
+    "QA_LogicCheck":      ("src.agents.qa",            "QAAgent"),
 }
 
 
@@ -76,8 +78,6 @@ class AgentExecutor:
         # Orchestrator returns TaskDAG directly, bypassing ReAct loop
         from src.dag.models import TaskDAG
         if isinstance(raw_output, tuple) and len(raw_output) == 2 and isinstance(raw_output[0], TaskDAG):
-            # OrchestratorAgent.execute returns (TaskDAG, [])
-            # Scheduler handles state transition after execute succeeds
             return
 
         output, traces = raw_output
@@ -87,11 +87,14 @@ class AgentExecutor:
         if hasattr(output, 'status') and output.status == "failed":
             raise RuntimeError(f"{node.agent_type} failed: {getattr(output, 'summary', 'unknown')}")
 
-        # Store output data on node context for feedback handlers
-        if hasattr(output, 'data') and output.data:
+        # Store normalized output data on node context for feedback handlers and API routes.
+        if hasattr(output, "model_dump"):
+            output_data = output.model_dump(mode="json")
+            if isinstance(getattr(output, "data", None), dict):
+                output_data.update(output.data)
+            node.context["_output_data"] = output_data
+        elif hasattr(output, 'data') and output.data:
             node.context["_output_data"] = output.data
-
-        # Scheduler handles state transition after execute succeeds
 
     def _build_agent(self, node: DAGNode) -> BaseAgent:
         agent_cls = self._resolve_agent_class(node.agent_type)
@@ -101,10 +104,14 @@ class AgentExecutor:
 
     @staticmethod
     def _build_task(node: DAGNode, task_id: str = "") -> dict:
-        return {
+        task = {
             "task_id": task_id or node.context.get("task_id", ""),
             "node_id": node.node_id,
             "agent_type": node.agent_type,
             "input_query": node.input_query,
             "context": node.context,
         }
+        # 注入 input_defaults 到 context（用于 Analyst Agent 的 dimension 参数）
+        if hasattr(node, 'input_defaults') and node.input_defaults:
+            task["context"].update(node.input_defaults)
+        return task

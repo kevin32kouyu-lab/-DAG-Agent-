@@ -70,6 +70,18 @@ pending_paid_sources:
     note: "企业基本信息 ¥0.15/次，司法风险 ¥1.50/次。需注册+充值。已封装为 tianyancha_tool.py。"
   - name: 企查查
     note: "类似天眼查，¥0.10/次起。新用户 1000次/月试用 30 天。"
+  - name: npm Registry
+    note: "完全免费，无需 API key。已封装为 npm_tool.py。"
+  - name: PyPI Stats
+    note: "完全免费，无需 API key。已封装为 pypi_tool.py。"
+  - name: Yahoo Finance (yfinance)
+    note: "完全免费，无需 API key。已封装为 yfinance_tool.py。"
+  - name: Gitee
+    note: "免费，Token 认证。已封装为 gitee_tool.py。"
+  - name: Firecrawl
+    note: "免费 500 页/月。已封装为 firecrawl_tool.py。"
+  - name: NewsAPI
+    note: "免费 100 次/天。已封装为 newsapi_tool.py。"
   - name: Stack Overflow / Stack Exchange
     note: "匿名 300 req/day；注册免费 app key 可升至 10,000 req/day。"
   - name: Reddit OAuth API

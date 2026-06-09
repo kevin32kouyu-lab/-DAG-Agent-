@@ -12,7 +12,12 @@ def test_compile_saas_template_to_task_dag():
         targets=["Notion", "ClickUp", "飞书"],
         scenario="saas",
         collection_depth="standard",
-        schema={"report_audience": "product_manager"},
+        schema={
+            "report_audience": "product_manager",
+            "exclude_dimensions": ["sentiment"],
+            "benchmark_product": "Notion",
+            "report_sections": ["summary", "opportunities"],
+        },
     ))
 
     assert dag.task_id == "task_saas"
@@ -20,6 +25,7 @@ def test_compile_saas_template_to_task_dag():
     assert dag.scenario == "saas"
     assert dag.targets == ["Notion", "ClickUp", "飞书"]
     assert dag.metadata["planning_mode"] == "template"
+    assert dag.metadata["schema"]["benchmark_product"] == "Notion"
     assert all(node.state == NodeState.PENDING for node in dag.nodes)
 
     report = dag.get_node("report")
@@ -29,6 +35,8 @@ def test_compile_saas_template_to_task_dag():
     assert report.role_group == "reporting"
     assert report.input_query["targets"] == ["Notion", "ClickUp", "飞书"]
     assert report.input_query["scenario"] == "saas"
+    assert report.input_query["benchmark_product"] == "Notion"
+    assert report.input_query["report_sections"] == ["summary", "opportunities"]
 
 
 def test_compile_app_template_to_task_dag():

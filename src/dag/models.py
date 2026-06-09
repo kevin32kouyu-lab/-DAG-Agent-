@@ -33,6 +33,7 @@ class DAGNode:
     display_name: str = ""
     description: str = ""
     output_contract: str = ""
+    input_defaults: dict[str, Any] = field(default_factory=dict)
     degradation_policy: dict[str, Any] = field(default_factory=dict)
     source_policy: dict[str, Any] = field(default_factory=dict)
 

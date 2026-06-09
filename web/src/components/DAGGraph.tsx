@@ -1,23 +1,18 @@
 import { useMemo } from 'react';
 import type { DAGNode } from '../types';
 
-/* ---- layer layout ---- */
+/* ---- layer layout: 按 node_id 分层 ---- */
 
-const LAYER_MAP: Record<string, number> = {
-  Orchestrator: 0,
-  SourceDiscovery: 1,
-  Collector: 2,
-  DataEnricher: 3,
-  FeatureAnalyzer: 4,
-  SentimentAnalyzer: 4,
-  PricingAnalyst: 4,
-  TechStackAnalyzer: 4,
-  MarketPositionAnalyzer: 4,
-  CrossReviewAgent: 5,
-  SWOTAnalyzer: 6,
-  ReportGenerator: 7,
-  QA_FactCheck: 8,
-  QA_LogicCheck: 8,
+const NODE_LAYER_MAP: Record<string, number> = {
+  collector: 1,
+  feature_analysis: 2,
+  sentiment_analysis: 2,
+  pricing_analysis: 2,
+  techstack_analysis: 2,
+  market_position: 2,
+  cross_review: 3,
+  report: 4,
+  qa: 5,
 };
 
 const STATE_COLORS: Record<string, string> = {
@@ -38,21 +33,16 @@ const STATE_LABELS: Record<string, string> = {
   degraded: '⚠降级',
 };
 
-const AGENT_SHORT: Record<string, string> = {
-  Orchestrator: 'Orch',
-  SourceDiscovery: 'SrcDisc',
-  Collector: 'Coll',
-  DataEnricher: 'Enrich',
-  FeatureAnalyzer: 'Feat',
-  SentimentAnalyzer: 'Sent',
-  PricingAnalyst: 'Price',
-  TechStackAnalyzer: 'Tech',
-  MarketPositionAnalyzer: 'MktPos',
-  CrossReviewAgent: 'XReview',
-  SWOTAnalyzer: 'SWOT',
-  ReportGenerator: 'Report',
-  QA_FactCheck: 'QA#1',
-  QA_LogicCheck: 'QA#2',
+const NODE_SHORT: Record<string, string> = {
+  collector: '采集',
+  feature_analysis: '功能',
+  sentiment_analysis: '口碑',
+  pricing_analysis: '定价',
+  techstack_analysis: '技术',
+  market_position: '定位',
+  cross_review: '互审',
+  report: '报告',
+  qa: '质检',
 };
 
 interface DAGGraphProps {
@@ -72,12 +62,12 @@ interface LayoutNode {
 function computeLayout(nodes: DAGNode[], w: number, h: number): LayoutNode[] {
   const layers = new Map<number, DAGNode[]>();
   for (const n of nodes) {
-    const l = LAYER_MAP[n.agent_type] ?? 3;
+    const l = NODE_LAYER_MAP[n.node_id] ?? 3;
     if (!layers.has(l)) layers.set(l, []);
     layers.get(l)!.push(n);
   }
 
-  const maxLayer = Math.max(...layers.keys(), 8);
+  const maxLayer = Math.max(...layers.keys(), 5);
   const lh = (h - 60) / (maxLayer + 1);
   const result: LayoutNode[] = [];
 
@@ -124,11 +114,13 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
     );
   }
 
+  const layerLabels = ['编排', '采集', '分析', '审查', '撰写', '质检'];
+
   return (
     <svg width={width} height={height} className="w-full rounded-lg border border-slate-200 bg-white" viewBox={`0 0 ${width} ${height}`}>
       {/* Layer labels on the left */}
-      {['编排', '源发现', '采集', '富化', '分析', '互审', '综合', '撰写', 'QA'].map((label, i) => (
-        <text key={i} x={4} y={30 + i * ((height - 60) / 9) + 4} fill="#94a3b8" fontSize={8}>
+      {layerLabels.map((label, i) => (
+        <text key={i} x={4} y={30 + i * ((height - 60) / 6) + 4} fill="#94a3b8" fontSize={8}>
           {label}
         </text>
       ))}
@@ -141,7 +133,7 @@ export default function DAGGraph({ nodes, width = 800, height = 600 }: DAGGraphP
       {/* Nodes */}
       {layout.map(ln => {
         const color = STATE_COLORS[ln.node.state] || '#6b7280';
-        const short = AGENT_SHORT[ln.node.agent_type] || ln.node.agent_type.slice(0, 6);
+        const short = NODE_SHORT[ln.node.node_id] || ln.node.agent_type.slice(0, 6);
         const isRunning = ln.node.state === 'running';
         const isCompleted = ln.node.state === 'completed';
         return (

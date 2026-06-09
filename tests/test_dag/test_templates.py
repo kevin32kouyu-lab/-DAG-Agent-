@@ -14,18 +14,16 @@ def test_saas_template_has_required_pipeline_nodes():
     template = get_default_template_registry().get("saas_competitor_analysis")
     node_ids = {node.node_id for node in template.nodes}
 
-    assert "source_discovery" in node_ids
+    # 重构后 8 个节点，4 个 Agent 类
     assert "collector" in node_ids
-    assert "data_enricher" in node_ids
     assert "feature_analysis" in node_ids
     assert "pricing_analysis" in node_ids
     assert "sentiment_analysis" in node_ids
+    assert "techstack_analysis" in node_ids
     assert "market_position" in node_ids
     assert "cross_review" in node_ids
-    assert "swot" in node_ids
     assert "report" in node_ids
-    assert "qa_fact_check" in node_ids
-    assert "qa_logic_check" in node_ids
+    assert "qa" in node_ids
 
 
 def test_template_dependencies_reference_existing_nodes():

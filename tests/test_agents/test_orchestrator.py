@@ -5,6 +5,7 @@ import logging
 import pytest
 
 from src.agents.orchestrator import OrchestratorAgent
+from src.dag.models import NodeState
 from src.llm_gateway.gateway import LLMResponse
 
 
@@ -41,7 +42,7 @@ async def test_generate_dag_logs_invalid_llm_output(caplog):
         result = await agent._generate_dag(["Notion"], {"industry": "saas"})
 
     assert result is None
-    assert "DAG 生成结果无法解析" in caplog.text
+    assert "compiled template mode" in caplog.text
 
 
 def test_json_to_dag_logs_skipped_invalid_nodes(caplog):
@@ -64,14 +65,29 @@ def test_json_to_dag_logs_skipped_invalid_nodes(caplog):
 
 
 @pytest.mark.asyncio
-async def test_execute_filters_invalid_nodes_before_mandatory_injection(caplog):
-    """真实执行链路中，坏节点不应阻断强制节点补齐。"""
-
+async def test_execute_compiles_template_dag_without_llm_dependency():
     class DummyGateway:
-        """提供包含坏节点的 DAG 响应。"""
-
         async def chat(self, **_kwargs):
-            """返回一份部分节点无效的 DAG。"""
+            raise AssertionError("should not be called")
+
+    agent = OrchestratorAgent(gateway=DummyGateway(), store=None, tool_registry=None)
+    dag, traces = await agent.execute({
+        "task_id": "task_compiled",
+        "targets": ["Notion"],
+        "schema": {"industry": "saas", "exclude_dimensions": ["swot"]},
+    })
+
+    assert traces == []
+    assert dag is not None
+    assert dag.workflow_template_id == "saas_competitor_analysis"
+    assert dag.get_node("report") is not None
+    assert dag.get_node("qa") is not None
+
+
+@pytest.mark.asyncio
+async def test_execute_returns_template_dag_and_ignores_llm_node_ids(caplog):
+    class DummyGateway:
+        async def chat(self, **_kwargs):
             return LLMResponse(
                 content="""
                 {
@@ -97,32 +113,27 @@ async def test_execute_filters_invalid_nodes_before_mandatory_injection(caplog):
 
     assert traces == []
     assert dag is not None
-    assert dag.get_node("source_disc") is not None
-    assert dag.find_nodes_by_agent("ReportGenerator")
-    assert dag.find_nodes_by_agent("QA_FactCheck")
-    assert dag.find_nodes_by_agent("QA_LogicCheck")
-    assert "DAG 节点跳过" in caplog.text
+    assert dag.get_node("collector") is not None
+    assert dag.get_node("report") is not None
+    assert dag.get_node("qa") is not None
+    assert "DAG 节点跳过" not in caplog.text
 
 
 def test_ensure_mandatory_nodes_swot_excluded_preserves_existing():
-    """When SWOT is excluded, existing nodes plus ReportGenerator/QA should be present,
-    but SWOT should not be injected."""
+    """When SWOT is excluded, existing nodes plus ReportGenerator/QA should be present."""
     agent = OrchestratorAgent.__new__(OrchestratorAgent)
     dag_json = {
         "task_id": "t3",
         "nodes": [
-            {"node_id": "s1", "agent_type": "SourceDiscovery", "depends_on": []},
-            {"node_id": "c1", "agent_type": "Collector", "depends_on": ["s1"]},
-            {"node_id": "f1", "agent_type": "FeatureAnalyzer", "depends_on": ["c1"]},
+            {"node_id": "c1", "agent_type": "Collector", "depends_on": []},
+            {"node_id": "f1", "agent_type": "Analyst", "depends_on": ["c1"]},
         ],
     }
     schema = {"exclude_dimensions": ["swot"]}
     result = agent._ensure_mandatory_nodes(dag_json, schema)
     types = {n["agent_type"] for n in result["nodes"]}
-    assert "SWOTAnalyzer" not in types
     assert "ReportGenerator" in types
-    assert "QA_FactCheck" in types
-    assert "QA_LogicCheck" in types
+    assert "QA" in types
     writer = next(n for n in result["nodes"] if n["agent_type"] == "ReportGenerator")
     deps = writer["depends_on"]
-    assert "f1" in deps or any("feature" in d.lower() for d in deps)
+    assert "f1" in deps or "c1" in deps

@@ -27,10 +27,12 @@ def get_store() -> GraphStore:
 def get_gateway() -> LLMGateway:
     global _gateway
     if _gateway is None:
-        # Configure an OpenAI-compatible provider from .env as the default LLM.
-        # Falls back to Anthropic if ANTHROPIC_API_KEY is set instead.
+        # Priority: 1) DeepSeek (fastest), 2) Anthropic proxy, 3) Default Anthropic
+        has_deepseek = bool(os.getenv("DEEPSEEK_API_KEY"))
         has_anthropic = bool(os.getenv("ANTHROPIC_API_KEY"))
-        if not has_anthropic:
+
+        if has_deepseek:
+            # Use DeepSeek as default (fastest response)
             model = os.getenv("LLM_DEFAULT_MODEL", "deepseek-chat")
             _gateway = LLMGateway(
                 default_model=model,
@@ -43,7 +45,19 @@ def get_gateway() -> LLMGateway:
                     model: "openai_compatible",
                 },
             )
+        elif has_anthropic:
+            # Use Anthropic proxy
+            model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+            _gateway = LLMGateway(
+                default_model=model,
+                model_map={
+                    "reasoning": model,
+                    "analysis": model,
+                    "batch": model,
+                },
+            )
         else:
+            # Fallback to default Anthropic
             _gateway = LLMGateway()
     return _gateway
 

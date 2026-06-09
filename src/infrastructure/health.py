@@ -19,6 +19,20 @@ class HealthCheck:
     def mark_task_start(self, task_id: str) -> None:
         self.task_timeouts[task_id] = time.time()
 
+    def mark_task_done(self, task_id: str) -> None:
+        self.task_timeouts.pop(task_id, None)
+
     def get_timed_out_tasks(self) -> list[str]:
         now = time.time()
         return [tid for tid, ts in self.task_timeouts.items() if now - ts > self.task_timeout]
+
+    def status(self) -> dict:
+        unhealthy = self.get_unhealthy_agents()
+        timed_out = self.get_timed_out_tasks()
+        return {
+            "status": "degraded" if (unhealthy or timed_out) else "ok",
+            "unhealthy_agents": unhealthy,
+            "timed_out_tasks": timed_out,
+            "agent_count": len(self.agent_heartbeats),
+            "running_tasks": len(self.task_timeouts),
+        }
