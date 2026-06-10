@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>技术跟踪 - 认知工作区</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#d0e1fb",
+                        "confidence-low": "#DC2626",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary": "#222a3e",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary-fixed-variant": "#264191",
+                        "secondary": "#505f76",
+                        "primary-container": "#1e3a8a",
+                        "on-tertiary-fixed": "#131b2e",
+                        "primary-fixed": "#dce1ff",
+                        "tertiary-fixed": "#dae2fd",
+                        "surface-dim": "#d8dadc",
+                        "border-subtle": "#E2E8F0",
+                        "on-tertiary-container": "#a4acc5",
+                        "on-secondary-container": "#54647a",
+                        "inverse-on-surface": "#eff1f3",
+                        "background": "#f7f9fb",
+                        "inverse-primary": "#b6c4ff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#384055",
+                        "on-primary-fixed": "#00164e",
+                        "agent-active": "#3B82F6",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7f9fb",
+                        "surface-container": "#eceef0",
+                        "on-background": "#191c1e",
+                        "on-surface-variant": "#444651",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "surface-tint": "#4059aa",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "confidence-medium": "#D97706",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "primary": "#00236f",
+                        "on-primary-container": "#90a8ff",
+                        "surface-container-low": "#f2f4f6",
+                        "outline-variant": "#c5c5d3",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "confidence-high": "#059669",
+                        "inverse-surface": "#2d3133",
+                        "outline": "#757682",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-surface": "#191c1e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-page": "32px",
+                        "unit": "4px",
+                        "container-max-width": "1280px",
+                        "report-reading-width": "800px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "label-md": ["JetBrains Mono"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+                        "label-md": ["13px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .dag-line {
+            stroke: #c5c5d3;
+            stroke-width: 2;
+            fill: none;
+        }
+        .dag-line-active {
+            stroke: #3B82F6;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 4;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+        .node-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        /* Custom scrollbar for telemetry */
+        .telemetry-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .telemetry-scroll::-webkit-scrollbar-track {
+            background: #f7f9fb;
+        }
+        .telemetry-scroll::-webkit-scrollbar-thumb {
+            background: #c5c5d3;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md font-body-md antialiased overflow-hidden">
+<!-- Navigation Drawer (SideNav) -->
+<nav class="fixed left-0 top-0 h-full w-64 border-r border-border-subtle bg-surface-container-low flex flex-col py-6 px-3 z-50">
+<div class="mb-8 px-4">
+<h1 class="font-headline-sm text-headline-sm text-primary">Cognitive Workspace</h1>
+</div>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">add_chart</span>
+<span class="font-body-md text-body-md">New Analysis</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">database</span>
+<span class="font-body-md text-body-md">Sources</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-body-md text-body-md">Progress</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">description</span>
+<span class="font-body-md text-body-md">Report</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">fact_check</span>
+<span class="font-body-md text-body-md">Evidence</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_tree</span>
+<span class="font-body-md text-body-md">Technical Trace</span>
+</a>
+</div>
+</nav>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 border-b border-border-subtle bg-surface-container-lowest flex justify-between items-center px-gutter h-16">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 0;">menu</span>
+<h2 class="font-headline-md text-headline-md text-primary">Competitive Intelligence</h2>
+</div>
+<div class="flex items-center gap-2 text-primary font-body-sm text-body-sm">
+<span class="w-2 h-2 rounded-full bg-agent-active node-pulse"></span>
+<span>Agent Active</span>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-64 mt-16 h-[calc(100vh-4rem)] overflow-y-auto p-margin-page bg-surface">
+<div class="max-w-container-max-width mx-auto flex flex-col gap-6">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-2">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-background mb-1">执行跟踪图</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">审计多智能体工作流的执行路径和系统遥测。</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 bg-surface-container-lowest border border-border-subtle text-secondary rounded-DEFAULT font-label-md text-label-md hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">download</span> 导出日志
+                    </button>
+<button class="px-4 py-2 bg-primary-container text-on-primary rounded-DEFAULT font-label-md text-label-md hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">pause</span> 暂停执行
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6 h-[600px]">
+<!-- DAG Visualization Panel (Left 8 columns) -->
+<div class="col-span-8 bg-surface-container-lowest border border-border-subtle rounded-DEFAULT flex flex-col relative overflow-hidden">
+<div class="px-4 py-3 border-b border-border-subtle bg-surface-container-low flex justify-between items-center">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">DAG 工作流可视化</span>
+<div class="flex gap-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-confidence-high"></span> 已完成
+                            </div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-agent-active node-pulse"></span> 运行中
+                            </div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span> 待处理
+                            </div>
+</div>
+</div>
+<div class="flex-1 relative bg-[#F8FAFC]">
+<!-- Grid Background -->
+<div class="absolute inset-0" style="background-image: linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px); background-size: 24px 24px; opacity: 0.5;"></div>
+<!-- SVG Canvas for Lines -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+<path class="dag-line" d="M 120 100 C 180 100, 180 180, 240 180"></path>
+<path class="dag-line" d="M 120 100 C 180 100, 180 260, 240 260"></path>
+<path class="dag-line-active" d="M 360 180 C 420 180, 420 180, 480 180"></path>
+<path class="dag-line" d="M 360 260 C 420 260, 420 260, 480 260"></path>
+<path class="dag-line" d="M 600 180 C 660 180, 660 220, 720 220"></path>
+<path class="dag-line" d="M 600 260 C 660 260, 660 220, 720 220"></path>
+</svg>
+<!-- Nodes Container -->
+<div class="absolute inset-0 p-8 relative">
+<!-- Node 1: Start -->
+<div class="absolute left-[40px] top-[80px] w-40 bg-surface-container-lowest border border-border-subtle rounded-DEFAULT shadow-sm p-3 flex flex-col gap-1.5 z-10 border-l-4 border-l-confidence-high">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-background">Data Ingestion</span>
+<span class="material-symbols-outlined text-[16px] text-confidence-high">check_circle</span>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant flex justify-between">
+<span>2.4s</span>
+<span>$0.002</span>
+</div>
+</div>
+<!-- Node 2: Extractor 1 -->
+<div class="absolute left-[240px] top-[160px] w-40 bg-surface-container-lowest border border-border-subtle rounded-DEFAULT shadow-sm p-3 flex flex-col gap-1.5 z-10 border-l-4 border-l-confidence-high">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-background">Feature Extractor</span>
+<span class="material-symbols-outlined text-[16px] text-confidence-high">check_circle</span>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant flex justify-between">
+<span>8.1s</span>
+<span>$0.014</span>
+</div>
+</div>
+<!-- Node 3: Extractor 2 -->
+<div class="absolute left-[240px] top-[240px] w-40 bg-surface-container-lowest border border-border-subtle rounded-DEFAULT shadow-sm p-3 flex flex-col gap-1.5 z-10 border-l-4 border-l-confidence-high">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-background">Sentiment Analy.</span>
+<span class="material-symbols-outlined text-[16px] text-confidence-high">check_circle</span>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant flex justify-between">
+<span>5.2s</span>
+<span>$0.008</span>
+</div>
+</div>
+<!-- Node 4: Synthesizer (Running) -->
+<div class="absolute left-[480px] top-[160px] w-40 bg-surface-container-lowest border border-agent-active rounded-DEFAULT shadow-sm p-3 flex flex-col gap-1.5 z-10 border-l-4 border-l-agent-active">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-primary">Insight Synth</span>
+<span class="w-2 h-2 rounded-full bg-agent-active node-pulse"></span>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant flex justify-between">
+<span>Running...</span>
+<span>~</span>
+</div>
+</div>
+<!-- Node 5: Fact Checker (Pending) -->
+<div class="absolute left-[480px] top-[240px] w-40 bg-surface-container-low border border-border-subtle rounded-DEFAULT p-3 flex flex-col gap-1.5 z-10 opacity-70 border-l-4 border-l-outline-variant">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Fact Checker</span>
+<span class="material-symbols-outlined text-[16px] text-outline-variant">schedule</span>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant flex justify-between">
+<span>Pending</span>
+<span>-</span>
+</div>
+</div>
+<!-- Node 6: Final Output (Pending) -->
+<div class="absolute left-[720px] top-[200px] w-40 bg-surface-container-low border border-border-subtle rounded-DEFAULT p-3 flex flex-col gap-1.5 z-10 opacity-70 border-l-4 border-l-outline-variant">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Report Gen</span>
+<span class="material-symbols-outlined text-[16px] text-outline-variant">schedule</span>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant flex justify-between">
+<span>Pending</span>
+<span>-</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Telemetry & Stats Panel (Right 4 columns) -->
+<div class="col-span-4 flex flex-col gap-6">
+<!-- Global Stats -->
+<div class="bg-surface-container-lowest border border-border-subtle rounded-DEFAULT p-4 grid grid-cols-2 gap-4">
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-1">总持续时间</div>
+<div class="font-label-md text-label-md text-on-background text-lg">15.7s</div>
+</div>
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-1">总代币消耗</div>
+<div class="font-label-md text-label-md text-on-background text-lg">4,280</div>
+</div>
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-1">API 成本估算</div>
+<div class="font-label-md text-label-md text-on-background text-lg">$0.024</div>
+</div>
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-1">系统状态</div>
+<div class="font-label-md text-label-md text-agent-active text-lg flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-agent-active"></span> 健康</div>
+</div>
+</div>
+<!-- Telemetry Log -->
+<div class="flex-1 bg-tertiary text-on-tertiary border border-border-subtle rounded-DEFAULT flex flex-col overflow-hidden">
+<div class="px-4 py-2 border-b border-[#384055] bg-[#1a2133] flex justify-between items-center">
+<span class="font-label-sm text-label-sm uppercase text-[#a4acc5] tracking-wider">实时遥测日志</span>
+<span class="material-symbols-outlined text-[14px] text-[#a4acc5]">terminal</span>
+</div>
+<div class="p-3 font-label-md text-label-md text-xs telemetry-scroll overflow-y-auto flex-1 bg-[#131b2e] leading-relaxed">
+<div class="text-[#a4acc5] mb-1">[10:42:01.102] INFO: Workflow initialized. ID: c2a9-4f81</div>
+<div class="text-[#a4acc5] mb-1">[10:42:01.105] CMD: Node 'Data Ingestion' started.</div>
+<div class="text-confidence-high mb-1">[10:42:03.505] SUCCESS: Node 'Data Ingestion' completed. (2400ms)</div>
+<div class="text-[#a4acc5] mb-1">[10:42:03.510] CMD: Spawning parallel nodes: 'Feature Extractor', 'Sentiment Analy.'</div>
+<div class="text-[#a4acc5] mb-1">[10:42:08.710] SUCCESS: Node 'Sentiment Analy.' completed. (5200ms)</div>
+<div class="text-[#a4acc5] mb-1">[10:42:11.605] SUCCESS: Node 'Feature Extractor' completed. (8100ms)</div>
+<div class="text-[#a4acc5] mb-1">[10:42:11.615] CMD: Node 'Insight Synth' started.</div>
+<div class="text-agent-active mb-1">[10:42:12.001] LLM_CALL: Sending prompt to reasoning engine...</div>
+<div class="text-agent-active mb-1">[10:42:14.230] STREAM: Receiving chunks [12/40]...</div>
+<div class="text-agent-active mb-1">[10:42:15.500] STREAM: Receiving chunks [28/40]...</div>
+<div class="text-[#a4acc5] mb-1 opacity-50 animate-pulse">_</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Detailed Execution Table -->
+<div class="bg-surface-container-lowest border border-border-subtle rounded-DEFAULT overflow-hidden mt-2">
+<div class="px-4 py-3 border-b border-border-subtle bg-surface-container-low">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">节点执行详情</span>
+</div>
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-bright font-label-sm text-label-sm text-on-surface-variant uppercase border-b border-border-subtle">
+<th class="py-2 px-4 font-medium">Node ID</th>
+<th class="py-2 px-4 font-medium">Type</th>
+<th class="py-2 px-4 font-medium">Status</th>
+<th class="py-2 px-4 font-medium">Duration</th>
+<th class="py-2 px-4 font-medium">Tokens</th>
+<th class="py-2 px-4 font-medium">Cost</th>
+</tr>
+</thead>
+<tbody class="font-label-md text-label-md text-on-background text-sm">
+<tr class="border-b border-border-subtle hover:bg-surface-container-lowest">
+<td class="py-2.5 px-4 text-on-surface-variant">#N-001</td>
+<td class="py-2.5 px-4">Data Ingestion</td>
+<td class="py-2.5 px-4"><span class="text-confidence-high">Completed</span></td>
+<td class="py-2.5 px-4">2.4s</td>
+<td class="py-2.5 px-4 text-on-surface-variant">-</td>
+<td class="py-2.5 px-4 text-on-surface-variant">$0.002</td>
+</tr>
+<tr class="border-b border-border-subtle hover:bg-surface-container-lowest">
+<td class="py-2.5 px-4 text-on-surface-variant">#N-002a</td>
+<td class="py-2.5 px-4">Feature Extractor</td>
+<td class="py-2.5 px-4"><span class="text-confidence-high">Completed</span></td>
+<td class="py-2.5 px-4">8.1s</td>
+<td class="py-2.5 px-4 text-on-surface-variant">2,140</td>
+<td class="py-2.5 px-4 text-on-surface-variant">$0.014</td>
+</tr>
+<tr class="border-b border-border-subtle hover:bg-surface-container-lowest">
+<td class="py-2.5 px-4 text-on-surface-variant">#N-002b</td>
+<td class="py-2.5 px-4">Sentiment Analy.</td>
+<td class="py-2.5 px-4"><span class="text-confidence-high">Completed</span></td>
+<td class="py-2.5 px-4">5.2s</td>
+<td class="py-2.5 px-4 text-on-surface-variant">1,820</td>
+<td class="py-2.5 px-4 text-on-surface-variant">$0.008</td>
+</tr>
+<tr class="bg-primary-fixed/30 border-l-2 border-l-agent-active hover:bg-primary-fixed/40">
+<td class="py-2.5 px-4 text-on-surface-variant">#N-003</td>
+<td class="py-2.5 px-4 text-primary font-medium">Insight Synth</td>
+<td class="py-2.5 px-4"><span class="text-agent-active flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-agent-active node-pulse"></span> Running</span></td>
+<td class="py-2.5 px-4">4.1s...</td>
+<td class="py-2.5 px-4 text-on-surface-variant">320...</td>
+<td class="py-2.5 px-4 text-on-surface-variant">-</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+</body></html>

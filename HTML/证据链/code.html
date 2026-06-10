@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html lang="zh"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Evidence Chain - Cognitive Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-container": "#d0e1fb",
+                      "confidence-low": "#DC2626",
+                      "error-container": "#ffdad6",
+                      "error": "#ba1a1a",
+                      "surface-container-high": "#e6e8ea",
+                      "tertiary": "#222a3e",
+                      "on-error-container": "#93000a",
+                      "surface-variant": "#e0e3e5",
+                      "on-primary-fixed-variant": "#264191",
+                      "secondary": "#505f76",
+                      "primary-container": "#1e3a8a",
+                      "on-tertiary-fixed": "#131b2e",
+                      "primary-fixed": "#dce1ff",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-dim": "#d8dadc",
+                      "border-subtle": "#E2E8F0",
+                      "on-tertiary-container": "#a4acc5",
+                      "on-secondary-container": "#54647a",
+                      "inverse-on-surface": "#eff1f3",
+                      "background": "#f7f9fb",
+                      "inverse-primary": "#b6c4ff",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-container": "#384055",
+                      "on-primary-fixed": "#00164e",
+                      "agent-active": "#3B82F6",
+                      "surface-container-highest": "#e0e3e5",
+                      "surface": "#f7f9fb",
+                      "surface-container": "#eceef0",
+                      "on-background": "#191c1e",
+                      "on-surface-variant": "#444651",
+                      "on-error": "#ffffff",
+                      "surface-bright": "#f7f9fb",
+                      "surface-tint": "#4059aa",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "confidence-medium": "#D97706",
+                      "on-primary": "#ffffff",
+                      "on-secondary-fixed": "#0b1c30",
+                      "primary": "#00236f",
+                      "on-primary-container": "#90a8ff",
+                      "surface-container-low": "#f2f4f6",
+                      "outline-variant": "#c5c5d3",
+                      "primary-fixed-dim": "#b6c4ff",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "confidence-high": "#059669",
+                      "inverse-surface": "#2d3133",
+                      "outline": "#757682",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "secondary-fixed": "#d3e4fe",
+                      "on-surface": "#191c1e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-page": "32px",
+                      "unit": "4px",
+                      "container-max-width": "1280px",
+                      "report-reading-width": "800px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg-mobile": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-md": [
+                              "JetBrains Mono"
+                      ],
+                      "display-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "13px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background antialiased flex h-screen overflow-hidden">
+<!-- NavigationDrawer -->
+<aside class="fixed left-0 top-0 h-full w-64 border-r border-border-subtle bg-surface-container-low hidden md:flex flex-col py-6 px-3 z-50">
+<div class="mb-8 px-4">
+<h1 class="font-headline-sm text-headline-sm text-primary">Cognitive Workspace</h1>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">add_chart</span>
+                New Analysis
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">database</span>
+                Sources
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                Progress
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">description</span>
+                Report
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+                Evidence
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+                Technical Trace
+            </a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 flex flex-col h-full relative">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-gutter h-16 w-full fixed top-0 right-0 md:w-[calc(100%-16rem)] z-40 bg-surface-container-lowest border-b border-border-subtle">
+<div class="flex items-center gap-2">
+<button class="md:hidden text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="font-headline-md text-headline-md text-primary">Competitive Intelligence</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="relative flex h-3 w-3 mr-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-agent-active opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-agent-active"></span>
+</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Agent Active</span>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="flex-1 overflow-y-auto mt-16 p-margin-page bg-background">
+<div class="max-w-container-max-width mx-auto">
+<!-- Header -->
+<div class="mb-12">
+<h1 class="font-headline-lg text-headline-lg text-on-background mb-4">证据链</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-report-reading-width">此视图追溯了最终报告结论的来源，展示了从原始数据到经过分析的证据，再到最终见解的结构化路径。</p>
+</div>
+<!-- Selected Conclusion Card -->
+<div class="bg-surface-container-lowest border border-border-subtle p-6 rounded-lg mb-8 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary-container"></div>
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary-container mt-1" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+<div>
+<span class="inline-block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">已选结论</span>
+<h3 class="font-headline-sm text-headline-sm text-on-background">核心竞争对手在第三季度大幅削减了研发支出，暗示可能的市场战略转向或面临资金流动性压力。</h3>
+</div>
+</div>
+</div>
+<!-- Visual Flow -->
+<div class="mb-12 bg-surface-container-lowest border border-border-subtle p-8 rounded-lg flex items-center justify-between text-center max-w-3xl mx-auto">
+<div class="flex flex-col items-center">
+<div class="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-secondary">database</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">原始来源</span>
+</div>
+<div class="flex-1 h-px bg-border-subtle relative mx-4">
+<span class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 material-symbols-outlined text-border-subtle text-sm">arrow_forward</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-3 border-2 border-primary-container">
+<span class="material-symbols-outlined text-primary-container">fact_check</span>
+</div>
+<span class="font-label-md text-label-md text-primary">处理后证据</span>
+</div>
+<div class="flex-1 h-px bg-border-subtle relative mx-4">
+<span class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 material-symbols-outlined text-border-subtle text-sm">arrow_forward</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-secondary">flag</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">最终结论</span>
+</div>
+</div>
+<!-- Evidence List -->
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-background mb-6">支持性证据片段</h4>
+<div class="space-y-4">
+<!-- Evidence Item 1 -->
+<div class="bg-surface-container-lowest border border-border-subtle p-6 rounded-lg hover:shadow-sm transition-shadow duration-200">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">description</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Q3 财务报告预披露</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 rounded bg-green-50 text-confidence-high font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                        高可信度
+                                    </span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-background mb-4">“根据10-Q草案文件显示，研发部门的总体预算分配较上一季度环比下降了14.2%，这主要集中在早期探索性项目上。”</p>
+<div class="flex items-center justify-between pt-4 border-t border-border-subtle mt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">smart_toy</span>
+<span class="font-label-md text-label-md text-on-surface-variant">处理节点: Financial_Analyzer_Agent_v2</span>
+</div>
+<button class="text-primary font-label-md text-label-md hover:underline">查看原始文档</button>
+</div>
+</div>
+<!-- Evidence Item 2 -->
+<div class="bg-surface-container-lowest border border-border-subtle p-6 rounded-lg hover:shadow-sm transition-shadow duration-200">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">article</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">行业通讯订阅</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 rounded bg-yellow-50 text-confidence-medium font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span>
+                                        中等可信度
+                                    </span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-background mb-4">“硅谷内幕消息称，竞争对手A已冻结了两个核心AI研发团队的招聘，并将部分工程师重新分配至商业化变现部门。”</p>
+<div class="flex items-center justify-between pt-4 border-t border-border-subtle mt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">smart_toy</span>
+<span class="font-label-md text-label-md text-on-surface-variant">处理节点: News_Sentiment_Extractor</span>
+</div>
+<button class="text-primary font-label-md text-label-md hover:underline">查看原始文档</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

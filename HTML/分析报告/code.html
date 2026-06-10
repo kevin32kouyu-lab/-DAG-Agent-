@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>竞争情报分析报告 - Cognitive Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#d0e1fb",
+                        "confidence-low": "#DC2626",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary": "#222a3e",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary-fixed-variant": "#264191",
+                        "secondary": "#505f76",
+                        "primary-container": "#1e3a8a",
+                        "on-tertiary-fixed": "#131b2e",
+                        "primary-fixed": "#dce1ff",
+                        "tertiary-fixed": "#dae2fd",
+                        "surface-dim": "#d8dadc",
+                        "border-subtle": "#E2E8F0",
+                        "on-tertiary-container": "#a4acc5",
+                        "on-secondary-container": "#54647a",
+                        "inverse-on-surface": "#eff1f3",
+                        "background": "#f7f9fb",
+                        "inverse-primary": "#b6c4ff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#384055",
+                        "on-primary-fixed": "#00164e",
+                        "agent-active": "#3B82F6",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7f9fb",
+                        "surface-container": "#eceef0",
+                        "on-background": "#191c1e",
+                        "on-surface-variant": "#444651",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "surface-tint": "#4059aa",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "confidence-medium": "#D97706",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "primary": "#00236f",
+                        "on-primary-container": "#90a8ff",
+                        "surface-container-low": "#f2f4f6",
+                        "outline-variant": "#c5c5d3",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "confidence-high": "#059669",
+                        "inverse-surface": "#2d3133",
+                        "outline": "#757682",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-surface": "#191c1e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-page": "32px",
+                        "unit": "4px",
+                        "container-max-width": "1280px",
+                        "report-reading-width": "800px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "label-md": ["JetBrains Mono"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "headline-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "label-md": ["13px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        .grid-layout { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: theme('spacing.gutter'); max-width: theme('spacing.container-max-width'); margin: 0 auto; }
+        .main-content { grid-column: span 12; }
+        @media (min-width: 1024px) {
+            .main-content { grid-column: span 8; max-width: theme('spacing.report-reading-width'); margin: 0 auto; }
+            .sidebar-content { grid-column: span 4; }
+        }
+        .content-card { background-color: theme('colors.surface-container-lowest'); border: 1px solid theme('colors.border-subtle'); border-radius: theme('borderRadius.DEFAULT'); padding: 24px; }
+        .executive-summary { border-left: 4px solid theme('colors.surface-container-highest'); padding-left: 20px; }
+        .data-table th { background-color: theme('colors.surface-container-highest'); text-transform: uppercase; padding: 12px 16px; text-align: left; border-bottom: 1px solid theme('colors.border-subtle'); }
+        .data-table td { padding: 12px 16px; border-bottom: 1px solid theme('colors.border-subtle'); }
+        .confidence-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: theme('borderRadius.full'); }
+        .confidence-high { color: theme('colors.confidence-high'); background-color: rgba(5, 150, 105, 0.1); }
+        .confidence-medium { color: theme('colors.confidence-medium'); background-color: rgba(217, 119, 6, 0.1); }
+        .confidence-low { color: theme('colors.confidence-low'); background-color: rgba(220, 38, 38, 0.1); }
+        .heatmap-cell { width: 32px; height: 32px; border-radius: 2px; }
+    </style>
+</head>
+<body class="font-body-md text-body-md bg-background min-h-screen flex">
+<!-- NavigationDrawer -->
+<nav class="fixed left-0 top-0 h-full w-64 bg-surface-container-low border-r border-border-subtle flex flex-col h-full py-6 px-3 z-50 hidden md:flex">
+<div class="mb-8 px-4">
+<h1 class="font-headline-sm text-headline-sm text-primary">Cognitive Workspace</h1>
+</div>
+<ul class="space-y-2 flex-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined">add_chart</span>
+<span class="font-body-md text-body-md">New Analysis</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-body-md text-body-md">Sources</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-md text-body-md">Progress</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body-md text-body-md">Report</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-body-md text-body-md">Evidence</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 cursor-pointer active:opacity-80 rounded-lg" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-body-md text-body-md">Technical Trace</span>
+</a>
+</li>
+</ul>
+</nav>
+<div class="flex-1 flex flex-col md:ml-64 w-full">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] z-40 bg-surface-container-lowest border-b border-border-subtle flex justify-between items-center px-gutter h-16">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-primary p-2">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="font-headline-md text-headline-md text-primary font-bold">Competitive Intelligence</h2>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-agent-active opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-agent-active"></span>
+</span>
+<span class="font-label-md text-label-md uppercase tracking-wider">Agent Active</span>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="pt-[88px] pb-margin-page px-gutter min-h-screen">
+<div class="grid-layout">
+<!-- Center Column: Report Content -->
+<div class="main-content space-y-[48px]">
+<!-- Header Area -->
+<div class="space-y-4">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md uppercase">
+<span>报告生成于 2023-10-27</span>
+<span>•</span>
+<span>目标市场: 亚太地区</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-background">云基础设施提供商深度分析</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">针对核心IaaS服务的综合战略评估，涵盖功能广度、定价模型及市场定位。</p>
+</div>
+<!-- Executive Summary -->
+<section class="content-card">
+<h2 class="font-headline-md text-headline-md mb-4 text-primary">执行摘要</h2>
+<div class="executive-summary space-y-4">
+<p class="font-body-md text-body-md">
+                                市场分析显示，<strong class="font-semibold">Provider A</strong> 继续在高端计算市场保持主导地位，尽管其定价模型最为复杂且成本最高。<strong class="font-semibold">Provider B</strong> 正通过激进的降价策略和增强的边缘计算网络快速夺取中型企业市场份额。
+                            </p>
+<p class="font-body-md text-body-md">
+                                新兴竞争者 <strong class="font-semibold">Provider C</strong> 在无服务器计算(Serverless)架构上展现出显著的技术代差优势，预计将在未来12个月内对传统IaaS模型构成实质性威胁。建议客户在短期内优化现有成本结构，同时开始小规模验证 Provider C 的无服务器产品。
+                            </p>
+</div>
+</section>
+<!-- Feature Heatmap -->
+<section class="content-card">
+<div class="flex justify-between items-end mb-6">
+<h2 class="font-headline-sm text-headline-sm">核心功能覆盖率分析 (功能热力图)</h2>
+<span class="confidence-chip confidence-high font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px] mr-1">check_circle</span>
+                                高置信度数据
+                            </span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full data-table">
+<thead>
+<tr>
+<th class="w-1/4 font-label-md text-label-md">功能模块</th>
+<th class="font-label-md text-label-md text-center">Provider A</th>
+<th class="font-label-md text-label-md text-center">Provider B</th>
+<th class="font-label-md text-label-md text-center">Provider C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="font-body-sm text-body-sm">弹性计算实例</td>
+<td class="text-center"><div class="heatmap-cell bg-primary-container mx-auto" title="全面支持"></div></td>
+<td class="text-center"><div class="heatmap-cell bg-primary-container mx-auto" title="全面支持"></div></td>
+<td class="text-center"><div class="heatmap-cell bg-secondary-container mx-auto" title="部分支持"></div></td>
+</tr>
+<tr>
+<td class="font-body-sm text-body-sm">托管 Kubernetes</td>
+<td class="text-center"><div class="heatmap-cell bg-primary-container mx-auto"></div></td>
+<td class="text-center"><div class="heatmap-cell bg-secondary-container mx-auto"></div></td>
+<td class="text-center"><div class="heatmap-cell bg-surface-variant mx-auto" title="计划中"></div></td>
+</tr>
+<tr>
+<td class="font-body-sm text-body-sm">无服务器函数 (Serverless)</td>
+<td class="text-center"><div class="heatmap-cell bg-secondary-container mx-auto"></div></td>
+<td class="text-center"><div class="heatmap-cell bg-surface-variant mx-auto"></div></td>
+<td class="text-center"><div class="heatmap-cell bg-primary-container mx-auto"></div></td>
+</tr>
+<tr>
+<td class="font-body-sm text-body-sm">全球 CDN 节点数</td>
+<td class="text-center"><div class="heatmap-cell bg-primary-container mx-auto"></div></td>
+<td class="text-center"><div class="heatmap-cell bg-primary-container mx-auto"></div></td>
+<td class="text-center"><div class="heatmap-cell bg-secondary-container mx-auto"></div></td>
+</tr>
+</tbody>
+</table>
+<div class="mt-4 flex gap-4 text-body-sm text-on-surface-variant font-body-sm justify-end">
+<div class="flex items-center gap-1"><div class="w-3 h-3 bg-primary-container rounded-sm"></div>全面支持</div>
+<div class="flex items-center gap-1"><div class="w-3 h-3 bg-secondary-container rounded-sm"></div>部分支持</div>
+<div class="flex items-center gap-1"><div class="w-3 h-3 bg-surface-variant rounded-sm"></div>不支持/计划中</div>
+</div>
+</div>
+</section>
+<!-- Pricing Analysis -->
+<section class="content-card">
+<div class="flex justify-between items-end mb-6">
+<h2 class="font-headline-sm text-headline-sm">计算单位定价基准</h2>
+<span class="confidence-chip confidence-medium font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px] mr-1">warning</span>
+                                价格波动
+                            </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6">基于标准 4vCPU / 16GB 内存实例，预留1年期折扣后的月度成本估算 (USD)。</p>
+<!-- Simple CSS Bar Chart representation -->
+<div class="space-y-4">
+<div class="relative pt-1">
+<div class="flex items-center justify-between mb-1">
+<span class="font-body-sm text-body-sm font-semibold">Provider A ($124.50/mo)</span>
+</div>
+<div class="overflow-hidden h-6 mb-4 text-xs flex rounded bg-surface-container-highest">
+<div class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-secondary" style="width: 100%"></div>
+</div>
+</div>
+<div class="relative pt-1">
+<div class="flex items-center justify-between mb-1">
+<span class="font-body-sm text-body-sm font-semibold">Provider B ($89.00/mo)</span>
+</div>
+<div class="overflow-hidden h-6 mb-4 text-xs flex rounded bg-surface-container-highest">
+<div class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary-container" style="width: 71%"></div>
+</div>
+</div>
+<div class="relative pt-1">
+<div class="flex items-center justify-between mb-1">
+<span class="font-body-sm text-body-sm font-semibold">Provider C ($75.20/mo)</span>
+</div>
+<div class="overflow-hidden h-6 mb-4 text-xs flex rounded bg-surface-container-highest">
+<div class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary-fixed-dim" style="width: 60%"></div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Sidebar: Evidence Trace -->
+<div class="sidebar-content hidden lg:block">
+<div class="sticky top-[104px] space-y-6">
+<div class="flex items-center justify-between border-b border-border-subtle pb-4">
+<h3 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined">fact_check</span>
+                                证据链追踪
+                            </h3>
+</div>
+<div class="space-y-4">
+<!-- Evidence Item 1 -->
+<div class="p-4 bg-surface-container-lowest border border-border-subtle rounded text-sm group hover:border-primary-fixed-dim transition-colors cursor-default">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant">引用来源: Q3 财报会议</span>
+<a class="text-primary hover:underline" href="#"><span class="material-symbols-outlined text-[16px]">open_in_new</span></a>
+</div>
+<p class="font-body-sm text-body-sm text-on-background mb-3">
+                                    "Provider C 宣布其新一代 Serverless 架构降低了 40% 的冷启动延迟..."
+                                </p>
+<div class="flex gap-2">
+<span class="bg-surface-container-high px-2 py-1 rounded-sm font-label-sm text-label-sm">技术指标</span>
+</div>
+</div>
+<!-- Evidence Item 2 -->
+<div class="p-4 bg-surface-container-lowest border border-border-subtle rounded text-sm group hover:border-primary-fixed-dim transition-colors cursor-default">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant">自动代理采集: 定价页面</span>
+<a class="text-primary hover:underline" href="#"><span class="material-symbols-outlined text-[16px]">open_in_new</span></a>
+</div>
+<p class="font-body-sm text-body-sm text-on-background mb-3">
+                                    监测到 Provider B 于 2023-10-15 调整了亚太区计算节点的预留实例折扣，平均降幅 12%。
+                                </p>
+<div class="flex gap-2">
+<span class="bg-surface-container-high px-2 py-1 rounded-sm font-label-sm text-label-sm">价格监控</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

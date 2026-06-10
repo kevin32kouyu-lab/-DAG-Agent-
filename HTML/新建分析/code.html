@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>开始竞品分析 - Cognitive Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-container": "#d0e1fb",
+                      "confidence-low": "#DC2626",
+                      "error-container": "#ffdad6",
+                      "error": "#ba1a1a",
+                      "surface-container-high": "#e6e8ea",
+                      "tertiary": "#222a3e",
+                      "on-error-container": "#93000a",
+                      "surface-variant": "#e0e3e5",
+                      "on-primary-fixed-variant": "#264191",
+                      "secondary": "#505f76",
+                      "primary-container": "#1e3a8a",
+                      "on-tertiary-fixed": "#131b2e",
+                      "primary-fixed": "#dce1ff",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-dim": "#d8dadc",
+                      "border-subtle": "#E2E8F0",
+                      "on-tertiary-container": "#a4acc5",
+                      "on-secondary-container": "#54647a",
+                      "inverse-on-surface": "#eff1f3",
+                      "background": "#f7f9fb",
+                      "inverse-primary": "#b6c4ff",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-container": "#384055",
+                      "on-primary-fixed": "#00164e",
+                      "agent-active": "#3B82F6",
+                      "surface-container-highest": "#e0e3e5",
+                      "surface": "#f7f9fb",
+                      "surface-container": "#eceef0",
+                      "on-background": "#191c1e",
+                      "on-surface-variant": "#444651",
+                      "on-error": "#ffffff",
+                      "surface-bright": "#f7f9fb",
+                      "surface-tint": "#4059aa",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "confidence-medium": "#D97706",
+                      "on-primary": "#ffffff",
+                      "on-secondary-fixed": "#0b1c30",
+                      "primary": "#00236f",
+                      "on-primary-container": "#90a8ff",
+                      "surface-container-low": "#f2f4f6",
+                      "outline-variant": "#c5c5d3",
+                      "primary-fixed-dim": "#b6c4ff",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "confidence-high": "#059669",
+                      "inverse-surface": "#2d3133",
+                      "outline": "#757682",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "secondary-fixed": "#d3e4fe",
+                      "on-surface": "#191c1e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-page": "32px",
+                      "unit": "4px",
+                      "container-max-width": "1280px",
+                      "report-reading-width": "800px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Hanken Grotesk"],
+                      "headline-sm": ["Hanken Grotesk"],
+                      "headline-lg-mobile": ["Hanken Grotesk"],
+                      "label-md": ["JetBrains Mono"],
+                      "display-lg": ["Hanken Grotesk"],
+                      "body-sm": ["Inter"],
+                      "label-sm": ["JetBrains Mono"],
+                      "headline-md": ["Hanken Grotesk"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                      "headline-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                      "label-md": ["13px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .custom-checkbox:checked + div {
+            background-color: #1e3a8a;
+            border-color: #1e3a8a;
+        }
+        .custom-checkbox:checked + div svg {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen antialiased">
+<!-- NavigationDrawer -->
+<aside class="fixed left-0 top-0 h-full w-64 border-r border-border-subtle bg-surface-container-low flex flex-col py-6 px-3 z-50 hidden md:flex">
+<div class="mb-8 px-4">
+<h1 class="font-headline-sm text-headline-sm text-primary">Cognitive Workspace</h1>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Active Item -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_chart</span>
+<span class="font-body-md font-bold">New Analysis</span>
+</a>
+<!-- Inactive Items -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-body-md text-body-md">Sources</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-md text-body-md">Progress</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body-md text-body-md">Report</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-body-md text-body-md">Evidence</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-colors duration-200 rounded-lg cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-body-md text-body-md">Technical Trace</span>
+</a>
+</nav>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] z-40 border-b border-border-subtle bg-surface-container-lowest flex justify-between items-center px-gutter h-16">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-on-surface-variant hover:text-primary transition-colors flex items-center">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="font-headline-md text-headline-md text-primary">Competitive Intelligence</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-agent-active opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-agent-active"></span>
+</span>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Agent Active</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 md:pl-72 pr-gutter pb-12 w-full max-w-container-max-width mx-auto">
+<div class="max-w-3xl mx-auto">
+<header class="mb-10">
+<h1 class="font-display-lg text-display-lg text-on-surface mb-2">开始竞品分析</h1>
+<p class="font-body-lg text-body-lg text-secondary">定义分析目标、对比维度并启动高精度研究引擎。</p>
+</header>
+<div class="bg-surface-container-lowest border border-border-subtle rounded p-8">
+<!-- Target Product -->
+<div class="mb-8">
+<label class="block font-label-md text-label-md uppercase tracking-wider text-secondary mb-3">目标产品 (Target Product)</label>
+<input class="w-full bg-surface-container-lowest border border-border-subtle rounded px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-shadow" placeholder="输入您的产品名称..." type="text"/>
+</div>
+<!-- Competitors -->
+<div class="mb-8">
+<label class="block font-label-md text-label-md uppercase tracking-wider text-secondary mb-3">竞品列表 (Competitors)</label>
+<div class="w-full bg-surface-container-lowest border border-border-subtle rounded px-4 py-3 min-h-[52px] flex flex-wrap items-center gap-2 focus-within:border-primary-container focus-within:ring-1 focus-within:ring-primary-container transition-shadow cursor-text">
+<!-- Tags -->
+<span class="inline-flex items-center gap-1 bg-surface-container px-2 py-1 border border-border-subtle rounded text-label-sm font-label-sm text-on-surface">
+                            Notion
+                            <button class="text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined" style="font-size: 14px;">close</span></button>
+</span>
+<span class="inline-flex items-center gap-1 bg-surface-container px-2 py-1 border border-border-subtle rounded text-label-sm font-label-sm text-on-surface">
+                            Airtable
+                            <button class="text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined" style="font-size: 14px;">close</span></button>
+</span>
+<!-- Input -->
+<input class="flex-1 bg-transparent border-none outline-none p-0 focus:ring-0 font-body-md text-body-md min-w-[150px]" placeholder="添加竞品并按回车..." type="text"/>
+</div>
+</div>
+<!-- Preset Demos -->
+<div class="mb-10">
+<label class="block font-label-md text-label-md uppercase tracking-wider text-secondary mb-3">预设演示 (Preset Demos)</label>
+<div class="flex flex-wrap gap-3">
+<button class="px-4 py-2 border border-border-subtle rounded font-body-sm text-body-sm text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 16px;">bolt</span>
+                            Notion vs Airtable vs ClickUp
+                        </button>
+<button class="px-4 py-2 border border-border-subtle rounded font-body-sm text-body-sm text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 16px;">bolt</span>
+                            Figma vs Sketch vs Penpot
+                        </button>
+<button class="px-4 py-2 border border-border-subtle rounded font-body-sm text-body-sm text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 16px;">bolt</span>
+                            Stripe vs Adyen vs PayPal
+                        </button>
+</div>
+</div>
+<hr class="border-border-subtle mb-8"/>
+<!-- Analysis Scope -->
+<div class="mb-10">
+<label class="block font-label-md text-label-md uppercase tracking-wider text-secondary mb-4">分析范围 (Analysis Scope)</label>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-start pt-1">
+<input checked="" class="custom-checkbox opacity-0 absolute h-0 w-0" type="checkbox"/>
+<div class="w-4 h-4 border border-outline rounded flex items-center justify-center transition-colors group-hover:border-primary-container">
+<svg class="w-3 h-3 text-white hidden" fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<div>
+<span class="block font-headline-sm text-headline-sm text-on-surface mb-1">功能对比</span>
+<span class="block font-body-sm text-body-sm text-secondary">深度映射核心功能与边缘案例差距。</span>
+</div>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-start pt-1">
+<input checked="" class="custom-checkbox opacity-0 absolute h-0 w-0" type="checkbox"/>
+<div class="w-4 h-4 border border-outline rounded flex items-center justify-center transition-colors group-hover:border-primary-container">
+<svg class="w-3 h-3 text-white hidden" fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<div>
+<span class="block font-headline-sm text-headline-sm text-on-surface mb-1">定价策略</span>
+<span class="block font-body-sm text-body-sm text-secondary">分析商业模式、阶梯定价及隐藏成本。</span>
+</div>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-start pt-1">
+<input checked="" class="custom-checkbox opacity-0 absolute h-0 w-0" type="checkbox"/>
+<div class="w-4 h-4 border border-outline rounded flex items-center justify-center transition-colors group-hover:border-primary-container">
+<svg class="w-3 h-3 text-white hidden" fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<div>
+<span class="block font-headline-sm text-headline-sm text-on-surface mb-1">市场定位</span>
+<span class="block font-body-sm text-body-sm text-secondary">目标受众细分与核心价值主张提取。</span>
+</div>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-start pt-1">
+<input class="custom-checkbox opacity-0 absolute h-0 w-0" type="checkbox"/>
+<div class="w-4 h-4 border border-outline rounded flex items-center justify-center transition-colors group-hover:border-primary-container">
+<svg class="w-3 h-3 text-white hidden" fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<div>
+<span class="block font-headline-sm text-headline-sm text-on-surface mb-1">用户情绪</span>
+<span class="block font-body-sm text-body-sm text-secondary">基于G2, Capterra和社区反馈的情感分析。</span>
+</div>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-start pt-1">
+<input class="custom-checkbox opacity-0 absolute h-0 w-0" type="checkbox"/>
+<div class="w-4 h-4 border border-outline rounded flex items-center justify-center transition-colors group-hover:border-primary-container">
+<svg class="w-3 h-3 text-white hidden" fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<div>
+<span class="block font-headline-sm text-headline-sm text-on-surface mb-1">技术栈</span>
+<span class="block font-body-sm text-body-sm text-secondary">逆向工程前端、后端架构及合规性。</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Submit Action -->
+<button class="w-full bg-primary-container text-on-primary-container font-headline-sm text-headline-sm py-4 rounded flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+                    开始分析
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">arrow_forward</span>
+</button>
+<p class="text-center mt-4 font-body-sm text-body-sm text-secondary">预计消耗时间: ~2 分钟</p>
+</div>
+</div>
+</main>
+</body></html>
