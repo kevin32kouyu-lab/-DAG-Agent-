@@ -18,8 +18,6 @@ env/
 page-snapshot.yml
 *frontend-screenshot*
 *homepage-screenshot*
-.claude/worktrees/
-.claude/settings.local.json
-.claude/ralph-loop.local.md
+# Claude IDE
 .claude/
 pic/
