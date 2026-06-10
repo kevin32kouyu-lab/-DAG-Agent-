@@ -20,11 +20,33 @@ export const COLORS = {
 
   // Differentiation ordinal colors
   differentiation: {
-    disadvantage: '#b91c1c',
-    parity: '#64748b',
-    advantage: '#0f766e',
-    unique: '#1d4ed8',
-    unknown: '#64748b',
+    disadvantage: '#dc2626',
+    parity: '#94a3b8',
+    advantage: '#059669',
+    unique: '#7c3aed',
+    unknown: '#cbd5e1',
+  } as Record<string, string>,
+
+  // Differentiation labels (Chinese)
+  differentiationLabel: {
+    disadvantage: '落后',
+    parity: '持平',
+    advantage: '领先',
+    unique: '独家',
+    unknown: '—',
+  } as Record<string, string>,
+
+  // Category Chinese labels
+  categoryLabel: {
+    'AI': 'AI 能力',
+    'Collaboration': '协作',
+    'API': '开放 API',
+    'Analytics': '数据分析',
+    'Integration': '集成',
+    'Mobile': '移动端',
+    'Security': '安全合规',
+    'UI': '界面体验',
+    'Other': '其他',
   } as Record<string, string>,
 
   // Chart chrome

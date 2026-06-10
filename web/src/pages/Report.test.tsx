@@ -38,7 +38,7 @@ describe('Report page', () => {
     vi.unstubAllGlobals();
   });
 
-  it('puts report content and dashboard before technical trace actions', async () => {
+  it('renders report with sections and dashboard', async () => {
     renderReport();
 
     await waitFor(() => {
@@ -47,6 +47,6 @@ describe('Report page', () => {
 
     expect(await screen.findByTestId('analytics-dashboard')).toBeInTheDocument();
     expect(screen.getByText('执行摘要')).toBeInTheDocument();
-    expect(screen.getAllByText('查看证据链')[0]).toBeInTheDocument();
+    expect(screen.getByText('详细报告')).toBeInTheDocument();
   });
 });

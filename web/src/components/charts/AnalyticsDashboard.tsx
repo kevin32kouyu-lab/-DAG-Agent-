@@ -1,10 +1,10 @@
-// 这个组件从报告接口读取图表数据，并优先服务报告页的阅读体验。
+// 报告仪表盘 v2 — 精简为 3 张核心图 + 2 个信息卡片
+// 删除: 雷达图 (评分无区分度) / 价值分横柱 (无解释性) / TechStack (Demo 无价值)
 
 import { useState, useEffect } from 'react';
 import LoadingSkeleton from '../LoadingSkeleton';
 import EmptyState from '../EmptyState';
 import ChartCard from './ChartCard';
-import RadarChart from './RadarChart';
 import BarChart from './BarChart';
 import FeatureHeatmap from './FeatureHeatmap';
 import SWOTQuadrant from './SWOTQuadrant';
@@ -45,26 +45,24 @@ export default function AnalyticsDashboard({ taskId }: { taskId: string }) {
   }
 
   if (error) {
-    return (
-      <EmptyState icon="⚠" title="图表加载失败" description={error} />
-    );
+    return <EmptyState icon="⚠" title="图表加载失败" description={error} />;
   }
 
   if (!data) return null;
 
-  const sourceLabel = data.data_source === 'report_fallback'
-    ? '报告推断'
-    : data.data_source === 'structured'
-      ? '结构化数据'
-      : '暂无数据';
+  const sourceLabel =
+    data.data_source === 'report_fallback'
+      ? '报告推断'
+      : data.data_source === 'structured'
+        ? '结构化数据'
+        : '暂无数据';
 
-  const hasAnyData = data.products.length > 0 && (
-    data.scoring.length > 0 ||
-    data.features.features.length > 0 ||
-    data.sentiment.topics.length > 0 ||
-    data.pricing.plans.length > 0 ||
-    data.swot.length > 0
-  );
+  const hasAnyData =
+    data.products.length > 0 &&
+    (data.features.features.length > 0 ||
+      data.sentiment.topics.length > 0 ||
+      data.pricing.plans.length > 0 ||
+      data.swot.length > 0);
 
   if (!hasAnyData) {
     return (
@@ -76,33 +74,57 @@ export default function AnalyticsDashboard({ taskId }: { taskId: string }) {
     );
   }
 
-  // Build sentiment bar data from products
-  const sentimentKeys = data.sentiment.products.length > 0
-    ? data.sentiment.products.map(p => `${p}_score`)
-    : [];
+  // ── Sentiment bar data (with Chinese topic labels) ──
+  const TOPIC_ZH: Record<string, string> = {
+    pricing: '价格', usability: '易用性', performance: '性能',
+    features: '功能', support: '支持', onboarding: '上手体验',
+    overall: '综合', security: '安全', privacy: '隐私',
+  };
+  const sentimentKeys =
+    data.sentiment.products.length > 0
+      ? data.sentiment.products.map(p => `${p}_score`)
+      : [];
   const sentimentData = data.sentiment.topics.map(t => {
-    const row: Record<string, unknown> = { topic: t.topic };
+    const row: Record<string, unknown> = { topic: TOPIC_ZH[t.topic] || t.topic };
     for (const k of sentimentKeys) row[k] = t[k] ?? 0;
     return row;
   });
 
-  // Build pricing bar data
-  const pricingKeys = data.products.length > 0 ? data.products : [];
-  const pricingByPlan = new Map<string, Record<string, unknown>>();
+  // ── Pricing table data ──
+  // 按方案档位分组: Free / Starter / Pro / Business / Enterprise
+  const TIER_ORDER = ['Free', 'Starter', 'Pro', 'Business', 'Enterprise'];
+  const pricingByTier = new Map<string, Map<string, { price: number; currency: string; billing: string }>>();
   for (const plan of data.pricing.plans) {
-    const key = plan.plan_name || plan.product;
-    if (!pricingByPlan.has(key)) {
-      pricingByPlan.set(key, { plan_name: key });
+    const tier = plan.plan_name;
+    if (!pricingByTier.has(tier)) pricingByTier.set(tier, new Map());
+    pricingByTier.get(tier)!.set(plan.product, {
+      price: plan.price,
+      currency: (plan as Record<string, unknown>).currency as string || 'USD',
+      billing: plan.billing_cycle,
+    });
+  }
+  const pricingTiers = TIER_ORDER.filter(t => pricingByTier.has(t));
+  // 追加非标准档位
+  for (const [tier] of pricingByTier) {
+    if (!pricingTiers.includes(tier)) pricingTiers.push(tier);
+  }
+
+  // ── Data source summary ──
+  const sourceParts: string[] = [];
+  if (data.source_stats?.details) {
+    for (const d of data.source_stats.details) {
+      const label = NODE_TYPE_LABELS[d.type] || d.type;
+      sourceParts.push(`${d.count} ${label}`);
     }
-    pricingByPlan.get(key)![plan.product] = plan.price;
   }
 
   return (
     <div className="space-y-4 animate-fadeIn">
+      {/* ── Header ── */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-slate-950">分析仪表盘</span>
         <span className="text-xs text-slate-500">
-          {data.products.length} 产品 · {data.scoring.length > 0 ? `${new Set(data.scoring.map(s => s.dimension)).size} 维度` : ''}
+          {data.products.length} 产品
         </span>
         <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-500">
           {sourceLabel}
@@ -115,92 +137,224 @@ export default function AnalyticsDashboard({ taskId }: { taskId: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Radar — dimension scoring */}
-        <ChartCard
-          title="维度评分对比"
-          subtitle="Radar"
-          icon="🎯"
-          isEmpty={data.scoring.length === 0}
-          emptyMessage="暂无评分数据"
-        >
-          <RadarChart data={data.scoring} products={data.products} />
-        </ChartCard>
+      {/* ── Section 1: 核心发现 (Insight Cards) ── */}
+      {data.insights && data.insights.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {data.insights.map(ins => (
+            <div
+              key={ins.product}
+              className="rounded-lg border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4"
+            >
+              <h4 className="text-sm font-semibold text-slate-900 mb-2">{ins.product}</h4>
+              <ul className="space-y-1.5">
+                {ins.items.slice(0, 3).map((item, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600 leading-relaxed">
+                    <span className="mt-0.5 flex-shrink-0">{item.icon}</span>
+                    <span>{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
 
-        {/* Sentiment bar chart */}
+      {/* ── Section 2: 用户情感 + 产品定位 ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
           title="用户情感分析"
-          subtitle="Sentiment Score"
+          subtitle="用户口碑 · Sentiment"
           icon="💬"
           isEmpty={data.sentiment.topics.length === 0}
-          emptyMessage="暂无情感数据"
+          emptyMessage="该场景暂未采集到足够用户反馈数据，可重新运行 Sentiment Analyzer 采集开发者社区评论"
         >
           <BarChart
             data={sentimentData}
             dataKeys={sentimentKeys}
             xAxisKey="topic"
             products={data.sentiment.products}
-            height={360}
+            height={280}
           />
         </ChartCard>
 
-        {/* Feature heatmap — maturity */}
         <ChartCard
-          title="功能成熟度矩阵"
-          subtitle="Maturity Heatmap"
-          icon="⚡"
-          isEmpty={data.features.features.length === 0}
-          emptyMessage="暂无功能分析数据"
+          title="产品定位速览"
+          subtitle="产品定位 · Positioning"
+          icon="📍"
+          isEmpty={!data.market_position || data.market_position.length === 0}
+          emptyMessage="暂无定位数据"
         >
-          <FeatureHeatmap data={data.features} mode="maturity" />
+          <MarketPositionTable data={data.market_position || []} />
+        </ChartCard>
+      </div>
+
+      {/* ── Section 3: 差异化能力对比（独立整行，横向滚动）── */}
+      <ChartCard
+        title="差异化能力对比"
+        subtitle="差异化对比 · Differentiation"
+        icon="⚡"
+        isEmpty={data.features.features.length === 0}
+        emptyMessage="暂无功能分析数据"
+      >
+        <FeatureHeatmap data={data.features} mode="differentiation" />
+      </ChartCard>
+
+      {/* ── Section 3: 定价对照表 + SWOT 条目 ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ChartCard
+          title="定价档位对照"
+          subtitle="定价档位 · Pricing"
+          icon="💰"
+          isEmpty={data.pricing.plans.length === 0}
+          emptyMessage="暂无定价数据"
+        >
+          <PricingTable tiers={pricingTiers} byTier={pricingByTier} products={data.products} />
         </ChartCard>
 
-        {/* SWOT quadrant */}
         <ChartCard
-          title="SWOT 分析概览"
-          subtitle="Quadrant"
+          title="SWOT 关键条目"
+          subtitle="战略分析 · SWOT"
           icon="🎯"
           isEmpty={data.swot.length === 0}
           emptyMessage="暂无 SWOT 数据"
         >
           <SWOTQuadrant data={data.swot} products={data.products} />
         </ChartCard>
-
-        {/* Pricing bar chart */}
-        <ChartCard
-          title="定价方案对比"
-          subtitle="Price Plans"
-          icon="💰"
-          isEmpty={data.pricing.plans.length === 0}
-          emptyMessage="暂无定价数据"
-        >
-          <BarChart
-            data={[...pricingByPlan.values()]}
-            dataKeys={pricingKeys}
-            xAxisKey="plan_name"
-            products={pricingKeys}
-            height={320}
-          />
-        </ChartCard>
-
-        {/* Value score chart */}
-        <ChartCard
-          title="价值评分对比"
-          subtitle="Value Score (0-1)"
-          icon="📈"
-          isEmpty={data.pricing.value_scores.length === 0}
-          emptyMessage="暂无价值评分"
-        >
-          <BarChart
-            data={data.pricing.value_scores as unknown as Record<string, unknown>[]}
-            dataKeys={['value_score']}
-            xAxisKey="product"
-            products={data.products}
-            height={320}
-            layout="vertical"
-          />
-        </ChartCard>
       </div>
+
+      {/* ── Footer: 数据来源 ── */}
+      {sourceParts.length > 0 && (
+        <div className="rounded-lg border border-slate-100 bg-slate-50/50 px-4 py-3 text-xs text-slate-500 flex items-center gap-2">
+          <span className="font-medium text-slate-600">📦 数据来源:</span>
+          <span>{sourceParts.join(' · ')}</span>
+          <span className="text-slate-400">({data.source_stats?.total_nodes} 节点)</span>
+        </div>
+      )}
     </div>
   );
 }
+
+// ── 定价对照表（替代柱状图）──
+function PricingTable({
+  tiers,
+  byTier,
+  products,
+}: {
+  tiers: string[];
+  byTier: Map<string, Map<string, { price: number; currency: string; billing: string }>>;
+  products: string[];
+}) {
+  if (tiers.length === 0) return null;
+
+  const formatPrice = (p: { price: number; currency: string; billing: string }) => {
+    if (p.price === 0) return '免费';
+    const symbol = p.currency === 'CNY' ? '¥' : '$';
+    const per = p.billing === 'yearly' ? '/年' : '/月';
+    return `${symbol}${p.price.toLocaleString()}${per}`;
+  };
+}
+
+// ── 产品定位速览（紧凑卡片）──
+function MarketPositionTable({ data }: { data: { product: string; positioning: string; gtm_strategy: string; target_audience: string }[] }) {
+  if (!data || data.length === 0) return null;
+
+  const GTM_MAP: Record<string, { label: string; color: string }> = {
+    'PLG': { label: '产品驱动', color: 'bg-emerald-100 text-emerald-700' },
+    'sales-led': { label: '销售驱动', color: 'bg-amber-100 text-amber-700' },
+    'channel': { label: '渠道驱动', color: 'bg-blue-100 text-blue-700' },
+    'community': { label: '社区驱动', color: 'bg-purple-100 text-purple-700' },
+  };
+
+  return (
+    <div className="space-y-2 flex flex-col justify-center" style={{ minHeight: 280 }}>
+      {data.map(d => (
+        <div key={d.product} className="rounded-lg border border-slate-100 bg-white px-3 py-2.5 flex-1 flex flex-col justify-center">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-xs font-semibold text-slate-800">{d.product}</span>
+            <span className="text-[11px] text-slate-500 truncate" title={d.positioning}>
+              · {d.positioning || '—'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 flex-wrap">
+            {d.gtm_strategy && d.gtm_strategy.split(',').map((s: string) => {
+              const tag = s.trim();
+              const m = GTM_MAP[tag] || { label: tag, color: 'bg-slate-100 text-slate-600' };
+              return (
+                <span key={tag} className={`inline-block px-1.5 py-0.5 rounded font-medium ${m.color}`}>
+                  {m.label}
+                </span>
+              );
+            })}
+            {d.target_audience && (
+              <>
+                <span className="text-slate-300">·</span>
+                <span className="truncate max-w-[120px]" title={d.target_audience}>
+                  {d.target_audience.length > 30 ? d.target_audience.slice(0, 30) + '…' : d.target_audience}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr className="border-b-2 border-slate-200">
+            <th className="text-left py-2 px-2 font-semibold text-slate-600">档位</th>
+            {products.map(p => (
+              <th key={p} className="text-center py-2 px-2 font-semibold text-slate-700">{p}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {tiers.map(tier => (
+            <tr key={tier} className="border-b border-slate-100 hover:bg-slate-50">
+              <td className="py-2 px-2 font-medium text-slate-700">
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                  tier === 'Free' ? 'bg-green-100 text-green-700' :
+                  tier === 'Enterprise' ? 'bg-purple-100 text-purple-700' :
+                  'bg-blue-50 text-blue-700'
+                }`}>
+                  {tier}
+                </span>
+              </td>
+              {products.map(p => {
+                const cell = byTier.get(tier)?.get(p);
+                return (
+                  <td key={p} className="text-center py-2 px-2 text-slate-600">
+                    {cell ? (
+                      <span className={cell.price === 0 ? 'text-green-600 font-medium' : ''}>
+                        {formatPrice(cell)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── 节点类型中文标签 ──
+const NODE_TYPE_LABELS: Record<string, string> = {
+  SourceInfo: '来源链接',
+  WebPage: '网页',
+  FeatureNode: '功能',
+  SentimentNode: '情感',
+  PricingModel: '定价模型',
+  PricingData: '定价明细',
+  SWOTNode: 'SWOT',
+  MarketPosition: '市场定位',
+  TechStack: '技术栈',
+  ScoringNode: '评分',
+  ReportSection: '报告章节',
+  Product: '产品',
+};

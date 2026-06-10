@@ -5,8 +5,19 @@ import { TaskContextProvider } from '../context/TaskContext';
 import { ToastProvider } from '../components/Toast';
 import Monitor from './Monitor';
 
+// Mock ResizeObserver for test environment
+global.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 vi.mock('../hooks/useWebSocket', () => ({
   useWebSocket: () => ({ events: [], connectionStatus: 'connected' }),
+}));
+
+vi.mock('../hooks/useDemoSimulation', () => ({
+  useDemoSimulation: () => ({ events: [], connectionStatus: 'connected', send: () => {} }),
 }));
 
 function renderMonitor() {
@@ -23,16 +34,12 @@ function renderMonitor() {
   );
 }
 
-describe('Monitor light theme', () => {
-  it('shows planning state on a light panel', async () => {
-    const { container } = renderMonitor();
+describe('Monitor', () => {
+  it('renders the analysis progress bar', async () => {
+    renderMonitor();
 
     await waitFor(() => {
-      expect(screen.getByText('正在规划分析流程...')).toBeInTheDocument();
+      expect(screen.getByText('分析进度')).toBeInTheDocument();
     });
-
-    const planningPanel = container.querySelector('[data-testid="pipeline-skeleton"]');
-    expect(planningPanel).toHaveClass('bg-white');
-    expect(planningPanel).not.toHaveClass('bg-gray-900');
   });
 });

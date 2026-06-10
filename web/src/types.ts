@@ -270,8 +270,35 @@ export interface AnalyticsResponse {
   pricing: PricingAnalytics;
   swot: SWOTDatum[];
   tech_stack: TechStackAnalytics;
+  market_position: MarketPositionDatum[];
+  insights: InsightEntry[];
+  source_stats: SourceStats;
   data_source?: 'structured' | 'report_fallback' | 'empty';
   warnings?: string[];
+}
+
+export interface MarketPositionDatum {
+  product: string;
+  positioning: string;
+  gtm_strategy: string;
+  target_audience: string;
+}
+
+export interface InsightEntry {
+  product: string;
+  items: InsightItem[];
+}
+
+export interface InsightItem {
+  type: 'strength' | 'weakness' | 'opportunity' | 'sentiment';
+  text: string;
+  icon: string;
+}
+
+export interface SourceStats {
+  total_nodes: number;
+  by_layer: Record<string, number>;
+  details: { type: string; count: number }[];
 }
 
 export interface ScoringDatum {
@@ -327,6 +354,10 @@ export interface SWOTDatum {
   weaknesses_count: number;
   opportunities_count: number;
   threats_count: number;
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  threats: string[];
 }
 
 export interface TechStackAnalytics {

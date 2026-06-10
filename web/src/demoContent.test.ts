@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { DEMO_PRESETS, DEMO_STAGES, TECH_HIGHLIGHTS, buildPresetTargets } from './demoContent';
 
 describe('demoContent', () => {
-  it('defines three stable demo presets', () => {
-    expect(DEMO_PRESETS).toHaveLength(3);
+  it('defines four demo presets', () => {
+    expect(DEMO_PRESETS).toHaveLength(4);
     expect(DEMO_PRESETS.map(p => p.title)).toEqual([
-      'AI 编程助手',
-      '项目管理工具',
-      '浏览器插件',
+      '飞书 vs 钉钉 vs 企业微信',
+      '豆包 vs Kimi vs 通义千问',
+      '抖音 vs 快手 vs 视频号',
+      'Trae vs Cursor vs Copilot',
     ]);
   });
 
@@ -24,7 +25,7 @@ describe('demoContent', () => {
     const preset = DEMO_PRESETS[0];
     const targets = buildPresetTargets(preset.id);
 
-    expect(targets).toEqual(['Cursor', 'GitHub Copilot', 'Codeium']);
+    expect(targets).toEqual(['飞书', '钉钉', '企业微信']);
     expect(targets).not.toBe(preset.targets);
   });
 
