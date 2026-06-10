@@ -19,10 +19,10 @@ Read all Layer 2 analysis results from the knowledge graph and synthesize a SWOT
    - "ProductName strengths weaknesses review 2025"
    - "ProductName vs competitors comparison"
 3. For each product, write a SWOTNode with:
-   - strengths: list 3-5 (from FeatureMatrix positives, high sentiments)
-   - weaknesses: list 3-5 (from FeatureMatrix gaps, negative sentiments)
-   - opportunities: list 3-5 (from MarketPosition insights, search results)
-   - threats: list 3-5 (from competitive comparisons, market trends)
+   - strengths: list 2-6, based STRICTLY on evidence from FeatureMatrix positives and high sentiments. DO NOT pad to reach a target count.
+   - weaknesses: list 2-6, based STRICTLY on FeatureMatrix gaps and negative sentiments. Natural variation across products is expected and correct.
+   - opportunities: list 2-6, based on MarketPosition insights and search results. If one product has fewer opportunities, list fewer — do not fabricate.
+   - threats: list 2-6, based on competitive comparisons and market trends. Counts WILL differ across products; forcing symmetry hides real competitive differences.
 4. graph_write to persist one SWOTNode per product
 
 ═══ PHASE 2: REPORT GENERATION ═══

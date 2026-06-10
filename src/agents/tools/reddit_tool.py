@@ -23,8 +23,18 @@ class RedditTool(ToolBase):
         "limit": {"type": "integer", "description": "Max posts (default 15, max 50)"},
     }
 
-    BASE = "https://www.reddit.com"
-    UA = "CompAgent/1.0 (competitive analysis tool)"
+    BASE = "https://old.reddit.com"
+    UA = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    )
+    HEADERS = {
+        "User-Agent": UA,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+    }
 
     async def execute(self, **kwargs) -> dict[str, Any]:
         action = kwargs.get("action", "search")
@@ -32,17 +42,29 @@ class RedditTool(ToolBase):
 
         try:
             if action == "search":
-                return await self._search(kwargs, limit)
+                result = await self._search(kwargs, limit)
             elif action == "hot":
-                return await self._subreddit_posts(kwargs, "hot", limit)
+                result = await self._subreddit_posts(kwargs, "hot", limit)
             elif action == "new":
-                return await self._subreddit_posts(kwargs, "new", limit)
+                result = await self._subreddit_posts(kwargs, "new", limit)
             elif action == "top":
-                return await self._subreddit_posts(kwargs, "top", limit)
+                result = await self._subreddit_posts(kwargs, "top", limit)
             else:
                 return {"error": f"Unknown action: {action}"}
+
+            # 直接 API 成功就返回
+            if result.get("total_results", 0) > 0 or "error" not in result:
+                return result
+
+            # 直接 API 失败（如 403），用 Serper site:reddit.com 兜底
+            if action == "search":
+                return await self._serper_fallback(kwargs, limit)
         except Exception as e:
+            if action == "search":
+                return await self._serper_fallback(kwargs, limit)
             return {"error": f"Reddit query failed: {e}", "results": []}
+
+        return result
 
     async def _search(self, kwargs: dict, limit: int) -> dict[str, Any]:
         query = kwargs.get("query", "")
@@ -53,12 +75,11 @@ class RedditTool(ToolBase):
         sort = kwargs.get("sort", "relevance")
         t = kwargs.get("time_range", "all")
 
-        params = {"q": query, "sort": sort, "t": t, "limit": limit, "raw_json": 1}
-        async with httpx.AsyncClient(timeout=15) as client:
+        params = {"q": query, "sort": sort, "t": t, "limit": limit}
+        async with httpx.AsyncClient(timeout=15, headers=self.HEADERS, http2=True) as client:
             resp = await client.get(
                 f"{self.BASE}/r/{subreddit}/search.json",
                 params=params,
-                headers={"User-Agent": self.UA},
             )
             if resp.status_code != 200:
                 return {"query": query, "error": f"HTTP {resp.status_code}", "results": []}
@@ -71,15 +92,14 @@ class RedditTool(ToolBase):
         subreddit = kwargs.get("subreddit", "all")
         t = kwargs.get("time_range", "all")
 
-        params = {"limit": limit, "raw_json": 1}
+        params = {"limit": limit}
         if listing == "top":
             params["t"] = t
 
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=15, headers=self.HEADERS, http2=True) as client:
             resp = await client.get(
                 f"{self.BASE}/r/{subreddit}/{listing}.json",
                 params=params,
-                headers={"User-Agent": self.UA},
             )
             if resp.status_code != 200:
                 return {"action": listing, "error": f"HTTP {resp.status_code}", "results": []}
@@ -117,3 +137,39 @@ class RedditTool(ToolBase):
             "total_results": len(results),
             "results": results,
         }
+
+    async def _serper_fallback(self, kwargs: dict, limit: int) -> dict[str, Any]:
+        """Reddit 直接 API 被封时，通过 Serper Google 搜索 site:reddit.com 兜底。"""
+        query = kwargs.get("query", "")
+        try:
+            from src.agents.tools.serper_tool import SerperSearchTool
+            serper = SerperSearchTool()
+            result = await serper.execute(
+                query=f"site:reddit.com {query}",
+                num=limit,
+                gl="us",
+                hl="en",
+            )
+            if "error" not in result:
+                results = []
+                for r in result.get("results", [])[:limit]:
+                    results.append({
+                        "title": r.get("title", ""),
+                        "url": r.get("url", ""),
+                        "subreddit": "",
+                        "author": "",
+                        "score": 0,
+                        "num_comments": 0,
+                        "selftext": r.get("snippet", "")[:500],
+                        "source": "serper_reddit_fallback",
+                    })
+                return {
+                    "query": query,
+                    "source": "serper_reddit_fallback",
+                    "total_results": len(results),
+                    "results": results,
+                    "note": "Fetched via Google (site:reddit.com) — Reddit direct API blocked",
+                }
+        except Exception:
+            pass
+        return {"query": query, "error": "Reddit unavailable (API blocked + Serper fallback failed)", "results": []}

@@ -89,8 +89,13 @@ class SocialMediaTool(ToolBase):
             headless=True,
             args=[
                 "--disable-blink-features=AutomationControlled",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-site-isolation-trials",
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-infobars",
+                "--hide-scrollbars",
             ],
         )
         context = await browser.new_context(
@@ -102,10 +107,18 @@ class SocialMediaTool(ToolBase):
             ),
             locale="zh-CN",
         )
-        # Hide automation signals
+        # Hide automation signals — more comprehensive
         await context.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', { get: () => false });
             Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+            Object.defineProperty(navigator, 'languages', { get: () => ['zh-CN', 'zh', 'en'] });
+            window.chrome = { runtime: {} };
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                Promise.resolve({ state: Notification.permission }) :
+                originalQuery(parameters)
+            );
         """)
         return browser, context
 
@@ -115,12 +128,18 @@ class SocialMediaTool(ToolBase):
         page = await context.new_page()
 
         try:
-            # Navigate to Xiaohongshu search
+            # Navigate to Xiaohongshu search — use "commit" to avoid waiting for heavy JS
             search_url = f"https://www.xiaohongshu.com/search_result?keyword={query}&type=51"
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=20000)
+            await page.goto(search_url, wait_until="commit", timeout=30000)
 
-            # Wait for content to load (anti-bot detection may block)
-            await asyncio.sleep(random.uniform(2, 4))
+            # Wait for content to load — try to catch note cards, fall back to sleep
+            try:
+                await page.wait_for_selector(
+                    '[class*="note-item"], section.note-item, [class*="feeds-page"] a[href*="/explore/"]',
+                    timeout=8000,
+                )
+            except Exception:
+                await asyncio.sleep(random.uniform(2, 4))
 
             # Try to extract post data from the page
             results = await page.evaluate("""
@@ -167,9 +186,15 @@ class SocialMediaTool(ToolBase):
 
         try:
             search_url = f"https://www.zhihu.com/search?type=content&q={query}"
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=20000)
+            await page.goto(search_url, wait_until="commit", timeout=30000)
 
-            await asyncio.sleep(random.uniform(2, 4))
+            try:
+                await page.wait_for_selector(
+                    '[class*="List-item"], .SearchResult-Card, [class*="SearchResult"]',
+                    timeout=8000,
+                )
+            except Exception:
+                await asyncio.sleep(random.uniform(2, 4))
 
             results = await page.evaluate("""
                 () => {
@@ -217,9 +242,15 @@ class SocialMediaTool(ToolBase):
 
         try:
             search_url = f"https://s.weibo.com/weibo?q={query}"
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=20000)
+            await page.goto(search_url, wait_until="commit", timeout=30000)
 
-            await asyncio.sleep(random.uniform(2, 4))
+            try:
+                await page.wait_for_selector(
+                    '[class*="card-wrap"], .card, [action-type="feed_list_item"]',
+                    timeout=8000,
+                )
+            except Exception:
+                await asyncio.sleep(random.uniform(2, 4))
 
             results = await page.evaluate("""
                 () => {

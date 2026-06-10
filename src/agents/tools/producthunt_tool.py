@@ -54,9 +54,12 @@ class ProductHuntTool(ToolBase):
 
         if token:
             try:
-                return await self._graphql_api(token, kwargs)
+                result = await self._graphql_api(token, kwargs)
             except Exception:
-                pass  # Fall through to scraping on API error
+                result = None  # Fall through to scraping on API error
+            # GraphQL 返回 errors（如 schema 变更）时也走爬虫兜底
+            if result and "error" not in result:
+                return result
 
         return await self._scrape(kwargs)
 

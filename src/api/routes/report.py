@@ -302,3 +302,64 @@ async def get_report_analytics(task_id: str):
     store = get_store()
     scheduler = get_scheduler()
     return analytics_builder.build_analytics_payload(store, scheduler, task_id)
+
+
+# ── Sources endpoint ────────────────────────────────────────────
+
+
+@router.get("/sources/{task_id}")
+async def get_task_sources(task_id: str):
+    """返回当前任务的全部知识图谱节点 + 边，供来源审核和证据链页使用。"""
+    store = get_store()
+    all_nodes = store.query_nodes()
+
+    sources = []
+    edges_data = []
+    seen_ids = set()
+
+    for node in all_nodes:
+        meta = getattr(node, "metadata", {}) or {}
+        if isinstance(meta, str):
+            try:
+                import json as _json
+                meta = _json.loads(meta)
+            except Exception:
+                meta = {}
+
+        if meta.get("task_id") != task_id:
+            continue
+
+        seen_ids.add(node.id)
+        node_data = {
+            "id": node.id,
+            "label": getattr(node, "label", "") or getattr(node, "url", "") or "",
+            "node_type": getattr(node, "node_type", "").value if hasattr(getattr(node, "node_type", ""), "value") else str(getattr(node, "node_type", "")),
+            "layer": getattr(node, "layer", 1),
+        }
+
+        # 附加常见字段
+        for field in ["url", "domain", "credibility_score", "product", "name", "confidence",
+                       "sentiment_score", "strategy", "positioning", "section", "content"]:
+            val = getattr(node, field, None)
+            if val is not None:
+                node_data[field] = val
+
+        # snippet from metadata
+        if isinstance(meta, dict) and meta.get("snippet"):
+            node_data["snippet"] = meta["snippet"]
+
+        sources.append(node_data)
+
+    # 收集相关边（两端节点都属于该任务）
+    all_edges = store._conn.execute("SELECT * FROM edges").fetchall()
+    ecols = [c[1] for c in store._conn.execute("PRAGMA table_info(edges)").fetchall()]
+    for row in all_edges:
+        edge = dict(zip(ecols, row))
+        if edge.get("source_id") in seen_ids or edge.get("target_id") in seen_ids:
+            edges_data.append({
+                "source_id": edge.get("source_id", ""),
+                "target_id": edge.get("target_id", ""),
+                "edge_type": edge.get("edge_type", "derived_from"),
+            })
+
+    return {"task_id": task_id, "sources": sources, "edges": edges_data, "total": len(sources)}

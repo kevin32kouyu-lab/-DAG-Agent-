@@ -74,7 +74,14 @@ class GraphStore:
         if layer is not None:
             query += " AND layer = ?"
             params.append(layer)
-        return [self._row_to_node(r) for r in self._conn.execute(query, params).fetchall()]
+        nodes = []
+        for r in self._conn.execute(query, params).fetchall():
+            try:
+                nodes.append(self._row_to_node(r))
+            except Exception:
+                # 跳过损坏的节点（旧数据 schema 不兼容）
+                pass
+        return nodes
 
     def create_edge(self, edge: GraphEdge) -> GraphEdge:
         self._conn.execute(
