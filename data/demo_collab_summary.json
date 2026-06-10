@@ -1,0 +1,29 @@
+{
+  "topic": "协同办公",
+  "task_id": "demo_collab",
+  "products": [
+    "飞书",
+    "钉钉",
+    "企业微信"
+  ],
+  "kg_nodes": 2652,
+  "kg_by_layer": {
+    "L1": 2578,
+    "L2": 54,
+    "L3": 20
+  },
+  "kg_by_type": {
+    "SourceInfoNode": 2056,
+    "WebPageNode": 508,
+    "ProductNode": 3,
+    "FeatureNode": 36,
+    "SentimentNode": 12,
+    "PricingModelNode": 3,
+    "PricingDataNode": 11,
+    "MarketPositionNode": 3,
+    "SWOTNode": 3,
+    "ScoringNode": 15,
+    "ReportSectionNode": 2
+  },
+  "cache_entries": 833
+}

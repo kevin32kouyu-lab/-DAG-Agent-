@@ -1,0 +1,29 @@
+{
+  "topic": "AI 编程工具",
+  "task_id": "demo_ai-ide",
+  "products": [
+    "Trae",
+    "Cursor",
+    "GitHub Copilot"
+  ],
+  "kg_nodes": 2643,
+  "kg_by_layer": {
+    "L1": 2576,
+    "L2": 48,
+    "L3": 19
+  },
+  "kg_by_type": {
+    "SourceInfoNode": 2056,
+    "WebPageNode": 508,
+    "ProductNode": 3,
+    "FeatureNode": 30,
+    "SentimentNode": 12,
+    "PricingModelNode": 3,
+    "PricingDataNode": 9,
+    "MarketPositionNode": 3,
+    "SWOTNode": 3,
+    "ScoringNode": 15,
+    "ReportSectionNode": 1
+  },
+  "cache_entries": 833
+}

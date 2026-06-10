@@ -1,0 +1,29 @@
+{
+  "topic": "短视频平台",
+  "task_id": "demo_short-video",
+  "products": [
+    "抖音",
+    "快手",
+    "视频号"
+  ],
+  "kg_nodes": 2639,
+  "kg_by_layer": {
+    "L1": 2570,
+    "L2": 48,
+    "L3": 21
+  },
+  "kg_by_type": {
+    "SourceInfoNode": 2056,
+    "WebPageNode": 508,
+    "ProductNode": 3,
+    "FeatureNode": 30,
+    "SentimentNode": 12,
+    "PricingModelNode": 3,
+    "PricingDataNode": 3,
+    "MarketPositionNode": 3,
+    "SWOTNode": 3,
+    "ScoringNode": 15,
+    "ReportSectionNode": 3
+  },
+  "cache_entries": 833
+}
