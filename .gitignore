@@ -6,11 +6,12 @@ build/
 .pytest_cache/
 .venv/
 env/
-*.db
-data/*.db
-data/*.db-wal
-data/*.db-shm
-data/task_targets.json
+# Demo data files (pre-populated knowledge base)
+# *.db
+# data/*.db
+# data/*.db-wal
+# data/*.db-shm
+# data/task_targets.json
 .env
 .playwright-mcp/
 .worktrees/
@@ -20,3 +21,5 @@ page-snapshot.yml
 .claude/worktrees/
 .claude/settings.local.json
 .claude/ralph-loop.local.md
+.claude/
+pic/
